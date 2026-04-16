@@ -10,7 +10,7 @@ function slugify(name) {
 }
 
 function getDatabaseFolder(outputFolder, db) {
-  return join(outputFolder, slugify(db.name));
+  return join(outputFolder, "databases", slugify(db.name));
 }
 
 function getTableFolder(outputFolder, db, table) {

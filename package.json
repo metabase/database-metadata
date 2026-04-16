@@ -11,7 +11,8 @@
   },
   "files": [
     "src",
-    "bin"
+    "bin",
+    "core-spec/v1/spec.md"
   ],
   "dependencies": {
     "js-yaml": "^4.1.0"

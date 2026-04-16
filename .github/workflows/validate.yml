@@ -18,10 +18,10 @@ jobs:
       - run: bun install
 
       - name: Extract default mode
-        run: bun run bin/cli.js extract-metadata examples/v1/metadata.json /tmp/default/databases --mode default
+        run: bun run bin/cli.js extract-metadata examples/v1/metadata.json /tmp/default --mode default
 
       - name: Extract serdes mode
-        run: bun run bin/cli.js extract-metadata examples/v1/metadata.json /tmp/serdes/databases --mode serdes
+        run: bun run bin/cli.js extract-metadata examples/v1/metadata.json /tmp/serdes --mode serdes
 
       - name: Diff default
         run: diff -r examples/v1/default /tmp/default

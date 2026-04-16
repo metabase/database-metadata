@@ -2,29 +2,30 @@
 
 import { parseArgs } from "node:util";
 import { extractMetadata } from "../src/extract-metadata.js";
+import { extractSpec } from "../src/extract-spec.js";
 
 const { values, positionals } = parseArgs({
   allowPositionals: true,
   options: {
     mode: { type: "string", default: "default" },
+    file: { type: "string" },
     help: { type: "boolean", short: "h", default: false },
   },
 });
 
 const command = positionals[0];
 
-const HELP = `Usage: database-metadata <command> <input-file> <output-folder> [options]
+const HELP = `Usage: database-metadata <command> [arguments] [options]
 
 Commands:
-  extract-metadata    Extract metadata JSON into YAML files
+  extract-metadata <input-file> <output-folder>   Extract metadata JSON into YAML files
+    --mode <mode>      Output mode: default or serdes (default: default)
 
-Arguments:
-  <input-file>        Path to the metadata JSON file
-  <output-folder>     Output folder for YAML files
+  extract-spec                                    Copy the bundled spec.md into a target file
+    --file <path>      Destination file (default: ./spec.md)
 
 Options:
-  --mode <mode>       Output mode: default or serdes (default: default)
-  -h, --help          Show this help message
+  -h, --help           Show this help message
 
 Modes:
   default    One YAML per database + one per table with fields nested inside
@@ -54,6 +55,12 @@ if (command === "extract-metadata") {
   console.log(
     `Extracted ${stats.databases} databases, ${stats.tables} tables, ${stats.fields} fields`,
   );
+  process.exit(0);
+}
+
+if (command === "extract-spec") {
+  const { target } = extractSpec({ file: values.file ?? "spec.md" });
+  console.log(`Spec extracted to ${target}`);
   process.exit(0);
 }
 
