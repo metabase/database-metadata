@@ -18,6 +18,11 @@ fields:
     base_type: type/BigInteger
     database_type: BIGINT
     semantic_type: type/FK
+    fk_target_field_id:
+      - Sample Database
+      - PUBLIC
+      - ACCOUNTS
+      - ID
   - name: PAGE_URL
     base_type: type/Text
     database_type: CHARACTER VARYING

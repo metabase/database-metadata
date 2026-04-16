@@ -234,6 +234,7 @@
       "id": 11,
       "table_id": 2,
       "name": "USER_ID",
+      "fk_target_field_id": 4,
       "description": "The id of the user who made this order. Note that in some cases where an order was created on behalf of a customer who phoned the order in, this might be the employee who handled the request.",
       "base_type": "type/Integer",
       "database_type": "INTEGER",
@@ -252,6 +253,7 @@
       "id": 14,
       "table_id": 2,
       "name": "PRODUCT_ID",
+      "fk_target_field_id": 8,
       "description": "The product ID. This is an internal identifier for the product, NOT the SKU.",
       "base_type": "type/Integer",
       "database_type": "INTEGER",
@@ -358,6 +360,7 @@
       "id": 65,
       "table_id": 4,
       "name": "PRODUCT_ID",
+      "fk_target_field_id": 8,
       "description": "The product the review was for",
       "base_type": "type/Integer",
       "database_type": "INTEGER",
@@ -408,6 +411,7 @@
       "id": 25,
       "table_id": 5,
       "name": "ACCOUNT_ID",
+      "fk_target_field_id": 24,
       "base_type": "type/BigInteger",
       "database_type": "BIGINT",
       "semantic_type": "type/FK"
@@ -584,6 +588,7 @@
       "id": 45,
       "table_id": 7,
       "name": "ACCOUNT_ID",
+      "fk_target_field_id": 24,
       "base_type": "type/BigInteger",
       "database_type": "BIGINT",
       "semantic_type": "type/FK"
@@ -623,6 +628,7 @@
       "id": 66,
       "table_id": 8,
       "name": "ACCOUNT_ID",
+      "fk_target_field_id": 24,
       "base_type": "type/BigInteger",
       "database_type": "BIGINT",
       "semantic_type": "type/FK"

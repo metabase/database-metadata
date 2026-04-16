@@ -23,6 +23,11 @@ fields:
     base_type: type/Integer
     database_type: INTEGER
     semantic_type: type/FK
+    fk_target_field_id:
+      - Sample Database
+      - PUBLIC
+      - PRODUCTS
+      - ID
   - name: REVIEWER
     description: The user who left the review
     base_type: type/Text

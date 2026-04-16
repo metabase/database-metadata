@@ -3,6 +3,11 @@ description: The id of the user who made this order. Note that in some cases whe
 base_type: type/Integer
 database_type: INTEGER
 semantic_type: type/FK
+fk_target_field_id:
+  - Sample Database
+  - PUBLIC
+  - PEOPLE
+  - ID
 table_id:
   - Sample Database
   - PUBLIC

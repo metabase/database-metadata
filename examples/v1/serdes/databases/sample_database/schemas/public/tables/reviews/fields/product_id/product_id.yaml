@@ -3,6 +3,11 @@ description: The product the review was for
 base_type: type/Integer
 database_type: INTEGER
 semantic_type: type/FK
+fk_target_field_id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  - ID
 table_id:
   - Sample Database
   - PUBLIC

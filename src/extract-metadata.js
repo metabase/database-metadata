@@ -113,11 +113,18 @@ function formatTable(db, table, { serdes = false } = {}) {
   return result;
 }
 
-function formatField(db, table, field, fieldsById, { serdes = false } = {}) {
-  const { id, table_id, parent_id, ...result } = field;
+function formatField(db, table, field, index, { serdes = false } = {}) {
+  const { fieldsById, tablesById, databasesById } = index;
+  const { id, table_id, parent_id, fk_target_field_id, ...result } = field;
   if (parent_id) {
     const parent = getFieldOrThrow(fieldsById, parent_id);
     result.parent_id = getFieldId(db, table, parent, fieldsById);
+  }
+  if (fk_target_field_id) {
+    const targetField = getFieldOrThrow(fieldsById, fk_target_field_id);
+    const targetTable = getTableOrThrow(tablesById, targetField.table_id);
+    const targetDb = getDatabaseOrThrow(databasesById, targetTable.db_id);
+    result.fk_target_field_id = getFieldId(targetDb, targetTable, targetField, fieldsById);
   }
   if (serdes) {
     result.table_id = getTableId(db, table);
@@ -138,10 +145,28 @@ function writeYaml(filePath, data) {
 function buildIndex(metadata) {
   return {
     databases: metadata.databases,
+    databasesById: new Map(metadata.databases.map((d) => [d.id, d])),
     tablesByDbId: Map.groupBy(metadata.tables, (t) => t.db_id),
+    tablesById: new Map(metadata.tables.map((t) => [t.id, t])),
     fieldsByTableId: Map.groupBy(metadata.fields, (f) => f.table_id),
     fieldsById: new Map(metadata.fields.map((f) => [f.id, f])),
   };
+}
+
+function getTableOrThrow(tablesById, id) {
+  const table = tablesById.get(id);
+  if (!table) {
+    throw new Error(`Table ${id} was not found`);
+  }
+  return table;
+}
+
+function getDatabaseOrThrow(databasesById, id) {
+  const database = databasesById.get(id);
+  if (!database) {
+    throw new Error(`Database ${id} was not found`);
+  }
+  return database;
 }
 
 function buildStats(metadata) {
@@ -153,7 +178,8 @@ function buildStats(metadata) {
 }
 
 function extractDefault({ metadata, outputFolder }) {
-  const { databases, tablesByDbId, fieldsByTableId, fieldsById } = buildIndex(metadata);
+  const index = buildIndex(metadata);
+  const { databases, tablesByDbId, fieldsByTableId } = index;
 
   for (const db of databases) {
     createFolder(getDatabaseFolder(outputFolder, db));
@@ -161,7 +187,7 @@ function extractDefault({ metadata, outputFolder }) {
 
     for (const table of tablesByDbId.get(db.id) ?? []) {
       const fields = (fieldsByTableId.get(table.id) ?? []).map((field) =>
-        formatField(db, table, field, fieldsById),
+        formatField(db, table, field, index),
       );
       createFolder(getTablesFolder(outputFolder, db, table));
       writeYaml(getTablePath(outputFolder, db, table), {
@@ -175,7 +201,8 @@ function extractDefault({ metadata, outputFolder }) {
 }
 
 function extractSerdes({ metadata, outputFolder }) {
-  const { databases, tablesByDbId, fieldsByTableId, fieldsById } = buildIndex(metadata);
+  const index = buildIndex(metadata);
+  const { databases, tablesByDbId, fieldsByTableId } = index;
 
   for (const db of databases) {
     createFolder(getDatabaseFolder(outputFolder, db));
@@ -192,7 +219,7 @@ function extractSerdes({ metadata, outputFolder }) {
         createFolder(getFieldFolder(outputFolder, db, table, field));
         writeYaml(
           getFieldPath(outputFolder, db, table, field),
-          formatField(db, table, field, fieldsById, { serdes: true }),
+          formatField(db, table, field, index, { serdes: true }),
         );
       }
     }

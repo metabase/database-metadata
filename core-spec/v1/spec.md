@@ -218,6 +218,7 @@ A field's table is implied by its position in the enclosing table's `fields` arr
 | `coercion_strategy` | string | No | Coercion rule applied at query time. See [Field Types](#field-types) |
 | `semantic_type` | string | No | Business-domain label (e.g., `type/PK`, `type/Email`). See [Field Types](#field-types) |
 | `parent_id` | array | No | Field FK of the parent field, for nested/JSON-unfolded columns |
+| `fk_target_field_id` | array | No | Field FK of the referenced primary-key column, for fields with `semantic_type: type/FK` |
 
 ### Example
 

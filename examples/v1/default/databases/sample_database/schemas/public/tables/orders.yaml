@@ -35,6 +35,11 @@ fields:
     base_type: type/Integer
     database_type: INTEGER
     semantic_type: type/FK
+    fk_target_field_id:
+      - Sample Database
+      - PUBLIC
+      - PEOPLE
+      - ID
   - name: CREATED_AT
     description: The date and time an order was submitted.
     base_type: type/DateTime
@@ -45,3 +50,8 @@ fields:
     base_type: type/Integer
     database_type: INTEGER
     semantic_type: type/FK
+    fk_target_field_id:
+      - Sample Database
+      - PUBLIC
+      - PRODUCTS
+      - ID
