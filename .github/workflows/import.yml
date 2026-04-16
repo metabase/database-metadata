@@ -47,8 +47,12 @@ jobs:
             -d '{"name":"ci","group_id":2}' | jq -r '.unmasked_key')
           echo "API key created"
 
-          # Create import archive from serdes examples and POST it
-          tar czf /tmp/import.tgz -C examples/v1/serdes .
+          # Stage a copy of the serdes examples, drop top-level database YAMLs
+          # (Metabase refuses to update an h2 database via serdes import),
+          # then create the import archive.
+          cp -R examples/v1/serdes /tmp/import-src
+          find /tmp/import-src/databases -mindepth 2 -maxdepth 2 -name '*.yaml' -delete
+          tar czf /tmp/import.tgz -C /tmp/import-src .
 
           HTTP_CODE=$(curl -s -o /tmp/import-response.txt -w '%{http_code}' \
             -X POST \
