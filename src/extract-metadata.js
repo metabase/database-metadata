@@ -35,13 +35,15 @@ function getTableId(db, table) {
 }
 
 function getFieldId(db, table, field, fieldsById) {
-  const names = [];
-  let current = field;
-  while (current) {
-    names.unshift(current.name);
-    current = current.parent_id ? fieldsById.get(current.parent_id) : null;
+  if (!field.parent_id) {
+    return [...getTableId(db, table), field.name];
   }
-  return [...getTableId(db, table), ...names];
+  const parent = fieldsById.get(field.parent_id);
+  if (!parent) {
+    return null;
+  }
+  const parentId = getFieldId(db, table, parent, fieldsById);
+  return parentId && [...parentId, field.name];
 }
 
 function formatDatabase(db) {
@@ -61,16 +63,18 @@ function formatField(db, table, field, index) {
   // Silently drop parent_id / fk_target_field_id if the referenced entity can't be resolved.
   if (parent_id) {
     const parent = fieldsById.get(parent_id);
-    if (parent) {
-      result.parent_id = getFieldId(db, table, parent, fieldsById);
+    const parentId = parent && getFieldId(db, table, parent, fieldsById);
+    if (parentId) {
+      result.parent_id = parentId;
     }
   }
   if (fk_target_field_id) {
     const targetField = fieldsById.get(fk_target_field_id);
     const targetTable = targetField && tablesById.get(targetField.table_id);
     const targetDb = targetTable && databasesById.get(targetTable.db_id);
-    if (targetDb) {
-      result.fk_target_field_id = getFieldId(targetDb, targetTable, targetField, fieldsById);
+    const targetId = targetDb && getFieldId(targetDb, targetTable, targetField, fieldsById);
+    if (targetId) {
+      result.fk_target_field_id = targetId;
     }
   }
   return result;
