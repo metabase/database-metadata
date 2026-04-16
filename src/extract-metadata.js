@@ -88,13 +88,27 @@ function writeYaml(filePath, data) {
   writeFileSync(filePath, yaml.dump(data, { lineWidth: -1, noRefs: true }));
 }
 
+function groupBy(items, keyFn) {
+  const result = new Map();
+  for (const item of items) {
+    const key = keyFn(item);
+    const existing = result.get(key);
+    if (existing) {
+      existing.push(item);
+    } else {
+      result.set(key, [item]);
+    }
+  }
+  return result;
+}
+
 function buildIndex(metadata) {
   return {
     databases: metadata.databases,
     databasesById: new Map(metadata.databases.map((d) => [d.id, d])),
-    tablesByDbId: Map.groupBy(metadata.tables, (t) => t.db_id),
+    tablesByDbId: groupBy(metadata.tables, (t) => t.db_id),
     tablesById: new Map(metadata.tables.map((t) => [t.id, t])),
-    fieldsByTableId: Map.groupBy(metadata.fields, (f) => f.table_id),
+    fieldsByTableId: groupBy(metadata.fields, (f) => f.table_id),
     fieldsById: new Map(metadata.fields.map((f) => [f.id, f])),
   };
 }
