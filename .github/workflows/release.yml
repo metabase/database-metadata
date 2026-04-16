@@ -1,0 +1,49 @@
+name: Release to NPM
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js with npm registry
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Compare local and published versions
+        id: check
+        run: |
+          LOCAL=$(node -p "require('./package.json').version")
+          PUBLISHED=$(npm view @metabase/database-metadata version 2>/dev/null || echo "none")
+          echo "local=$LOCAL" >> $GITHUB_OUTPUT
+          echo "published=$PUBLISHED" >> $GITHUB_OUTPUT
+          if [ "$LOCAL" != "$PUBLISHED" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Publish to NPM
+        if: steps.check.outputs.changed == 'true'
+        run: npm publish --tag latest
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_RELEASE_TOKEN }}
+
+      - name: Generate workflow summary
+        run: |
+          tee -a $GITHUB_STEP_SUMMARY << EOF
+          ## @metabase/database-metadata
+
+          - **Local version**: ${{ steps.check.outputs.local }}
+          - **Published version**: ${{ steps.check.outputs.published }}
+          - **Published this run**: ${{ steps.check.outputs.changed }}
+          EOF

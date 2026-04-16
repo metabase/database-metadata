@@ -1,0 +1,24 @@
+name: Validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  validate-export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install
+
+      - name: Extract metadata
+        run: bun run bin/cli.js extract-metadata examples/v1/metadata.json /tmp/databases
+
+      - name: Diff examples
+        run: diff -r examples/v1/databases /tmp/databases

@@ -1,0 +1,19 @@
+{
+  "name": "@metabase/database-metadata",
+  "version": "1.0.0",
+  "description": "CLI tool to extract Metabase database metadata into YAML files",
+  "license": "SEE LICENSE IN LICENSE.txt",
+  "type": "module",
+  "main": "src/index.js",
+  "bin": {
+    "database-metadata": "bin/cli.js"
+  },
+  "files": [
+    "src",
+    "bin",
+    "core-spec/v1/spec.md"
+  ],
+  "dependencies": {
+    "js-yaml": "^4.1.0"
+  }
+}
