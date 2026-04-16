@@ -125,21 +125,22 @@ By convention, metadata is stored under `.metabase/databases/` at the root of th
 ```
 .metabase/
 └── databases/
-    └── {database_slug}/
-        ├── {database_slug}.yaml
+    └── {database}/
+        ├── {database}.yaml
         ├── schemas/
-        │   └── {schema_slug}/
+        │   └── {schema}/
         │       └── tables/
-        │           └── {table_slug}.yaml
+        │           └── {table}.yaml
         └── tables/                         # Schemaless databases
-            └── {table_slug}.yaml
+            └── {table}.yaml
 ```
 
 ### Path Construction Rules
 
-- Every database, schema, table, and field name is slugified: lowercase, non-alphanumerics collapsed to `_`, and leading/trailing `_` stripped.
-- A database's YAML file (`{slug}.yaml`) lives at the root of its folder.
-- Tables are nested under `schemas/{schema_slug}/tables/{table_slug}/` when the database has schemas, or directly under `tables/{table_slug}/` for schemaless databases.
+- Database, schema, and table names are used verbatim as folder and file names. Case and spaces are preserved (e.g. `Sample Database/`, `PUBLIC/`, `ORDERS.yaml`).
+- Only characters that are invalid in paths are escaped: `/` becomes `__SLASH__`, `\` becomes `__BACKSLASH__`.
+- A database's YAML file (`{name}.yaml`) lives at the root of its folder.
+- Tables are nested under `schemas/{schema}/tables/{table}.yaml` when the database has schemas, or directly under `tables/{table}.yaml` for schemaless databases.
 - A table's YAML file embeds all of its fields inline — there is no separate file per field.
 
 ---

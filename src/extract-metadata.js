@@ -2,31 +2,28 @@ import { readFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import yaml from "js-yaml";
 
-function slugify(name) {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_|_$/g, "");
+function escapeFilename(name) {
+  return name.replace(/\//g, "__SLASH__").replace(/\\/g, "__BACKSLASH__");
 }
 
 function getDatabaseFolder(outputFolder, db) {
-  return join(outputFolder, slugify(db.name));
+  return join(outputFolder, escapeFilename(db.name));
 }
 
 function getTablesFolder(outputFolder, db, table) {
   const dbFolder = getDatabaseFolder(outputFolder, db);
   if (table.schema) {
-    return join(dbFolder, "schemas", slugify(table.schema), "tables");
+    return join(dbFolder, "schemas", escapeFilename(table.schema), "tables");
   }
   return join(dbFolder, "tables");
 }
 
 function getDatabasePath(outputFolder, db) {
-  return join(getDatabaseFolder(outputFolder, db), `${slugify(db.name)}.yaml`);
+  return join(getDatabaseFolder(outputFolder, db), `${escapeFilename(db.name)}.yaml`);
 }
 
 function getTablePath(outputFolder, db, table) {
-  return join(getTablesFolder(outputFolder, db, table), `${slugify(table.name)}.yaml`);
+  return join(getTablesFolder(outputFolder, db, table), `${escapeFilename(table.name)}.yaml`);
 }
 
 function getDbId(db) {
