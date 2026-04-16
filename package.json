@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "CLI tool to extract Metabase database metadata into YAML files",
   "license": "SEE LICENSE IN LICENSE.txt",
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
   "main": "src/index.js",
   "bin": {
