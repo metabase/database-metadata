@@ -1,0 +1,7 @@
+table_id:
+  - Sample Database
+  - PUBLIC
+  - FEEDBACK
+name: DATE_RECEIVED
+base_type: type/DateTime
+database_type: TIMESTAMP

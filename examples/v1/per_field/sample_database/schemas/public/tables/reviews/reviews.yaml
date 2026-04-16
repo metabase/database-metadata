@@ -1,0 +1,4 @@
+db_id: Sample Database
+name: REVIEWS
+schema: PUBLIC
+description: Reviews that Sample Company customers have left on our products.

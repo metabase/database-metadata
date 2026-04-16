@@ -1,0 +1,8 @@
+table_id:
+  - Sample Database
+  - PUBLIC
+  - ACCOUNTS
+name: LAST_NAME
+base_type: type/Text
+database_type: CHARACTER VARYING
+semantic_type: type/Name

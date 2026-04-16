@@ -1,0 +1,9 @@
+table_id:
+  - Sample Database
+  - PUBLIC
+  - PEOPLE
+name: STATE
+description: The state or province of the account’s billing address
+base_type: type/Text
+database_type: CHARACTER
+semantic_type: type/State

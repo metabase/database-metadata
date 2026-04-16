@@ -1,0 +1,8 @@
+table_id:
+  - Sample Database
+  - PUBLIC
+  - INVOICES
+name: ACCOUNT_ID
+base_type: type/BigInteger
+database_type: BIGINT
+semantic_type: type/FK

@@ -1,0 +1,9 @@
+table_id:
+  - Sample Database
+  - PUBLIC
+  - PEOPLE
+name: SOURCE
+description: 'The channel through which we acquired this user. Valid values include: Affiliate, Facebook, Google, Organic and Twitter'
+base_type: type/Text
+database_type: CHARACTER VARYING
+semantic_type: type/Source

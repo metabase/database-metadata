@@ -1,0 +1,9 @@
+table_id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+name: USER_ID
+description: The id of the user who made this order. Note that in some cases where an order was created on behalf of a customer who phoned the order in, this might be the employee who handled the request.
+base_type: type/Integer
+database_type: INTEGER
+semantic_type: type/FK

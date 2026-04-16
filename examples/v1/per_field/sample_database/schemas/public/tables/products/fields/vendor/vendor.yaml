@@ -1,0 +1,9 @@
+table_id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+name: VENDOR
+description: The source of the product.
+base_type: type/Text
+database_type: CHARACTER VARYING
+semantic_type: type/Company

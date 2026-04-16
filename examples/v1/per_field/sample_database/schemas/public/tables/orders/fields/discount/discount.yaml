@@ -1,0 +1,9 @@
+table_id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+name: DISCOUNT
+description: Discount amount.
+base_type: type/Float
+database_type: DOUBLE PRECISION
+semantic_type: type/Discount

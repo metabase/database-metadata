@@ -1,0 +1,8 @@
+table_id:
+  - Sample Database
+  - PUBLIC
+  - ANALYTIC_EVENTS
+name: EVENT
+base_type: type/Text
+database_type: CHARACTER VARYING
+semantic_type: type/Category

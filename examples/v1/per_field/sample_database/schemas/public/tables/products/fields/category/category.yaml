@@ -1,0 +1,9 @@
+table_id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+name: CATEGORY
+description: 'The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget'
+base_type: type/Text
+database_type: CHARACTER VARYING
+semantic_type: type/Category

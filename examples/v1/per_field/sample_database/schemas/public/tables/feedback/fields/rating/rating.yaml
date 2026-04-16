@@ -1,0 +1,8 @@
+table_id:
+  - Sample Database
+  - PUBLIC
+  - FEEDBACK
+name: RATING
+base_type: type/Integer
+database_type: SMALLINT
+semantic_type: type/Score

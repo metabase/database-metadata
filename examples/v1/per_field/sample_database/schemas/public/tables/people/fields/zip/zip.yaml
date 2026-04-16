@@ -1,0 +1,9 @@
+table_id:
+  - Sample Database
+  - PUBLIC
+  - PEOPLE
+name: ZIP
+description: The postal code of the account’s billing address
+base_type: type/Text
+database_type: CHARACTER
+semantic_type: type/ZipCode

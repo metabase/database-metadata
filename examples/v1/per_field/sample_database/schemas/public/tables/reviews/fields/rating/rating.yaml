@@ -1,0 +1,9 @@
+table_id:
+  - Sample Database
+  - PUBLIC
+  - REVIEWS
+name: RATING
+description: The rating (on a scale of 1-5) the user left.
+base_type: type/Integer
+database_type: SMALLINT
+semantic_type: type/Score

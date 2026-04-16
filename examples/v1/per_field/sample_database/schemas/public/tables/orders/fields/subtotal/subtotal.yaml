@@ -1,0 +1,8 @@
+table_id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+name: SUBTOTAL
+description: The raw, pre-tax cost of the order. Note that this might be different in the future from the product price due to promotions, credits, etc.
+base_type: type/Float
+database_type: DOUBLE PRECISION

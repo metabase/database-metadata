@@ -1,0 +1,4 @@
+db_id: Sample Database
+name: ORDERS
+schema: PUBLIC
+description: Confirmed Sample Company orders for a product, from a user.

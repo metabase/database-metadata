@@ -1,0 +1,8 @@
+table_id:
+  - Sample Database
+  - PUBLIC
+  - REVIEWS
+name: REVIEWER
+description: The user who left the review
+base_type: type/Text
+database_type: CHARACTER VARYING

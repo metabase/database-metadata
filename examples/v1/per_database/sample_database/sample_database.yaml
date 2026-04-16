@@ -1,0 +1,335 @@
+name: Sample Database
+engine: h2
+tables:
+  - name: PEOPLE
+    schema: PUBLIC
+    description: Information on the user accounts registered with Sample Company.
+    fields:
+      - name: STATE
+        description: The state or province of the account’s billing address
+        base_type: type/Text
+        database_type: CHARACTER
+        semantic_type: type/State
+      - name: ID
+        description: A unique identifier given to each user.
+        base_type: type/BigInteger
+        database_type: BIGINT
+        semantic_type: type/PK
+      - name: EMAIL
+        description: The contact email for the account.
+        base_type: type/Text
+        database_type: CHARACTER VARYING
+        semantic_type: type/Email
+      - name: BIRTH_DATE
+        description: The date of birth of the user
+        base_type: type/Date
+        database_type: DATE
+      - name: SOURCE
+        description: 'The channel through which we acquired this user. Valid values include: Affiliate, Facebook, Google, Organic and Twitter'
+        base_type: type/Text
+        database_type: CHARACTER VARYING
+        semantic_type: type/Source
+      - name: NAME
+        description: The name of the user who owns an account
+        base_type: type/Text
+        database_type: CHARACTER VARYING
+        semantic_type: type/Name
+      - name: CREATED_AT
+        description: The date the user record was created. Also referred to as the user’s "join date"
+        base_type: type/DateTime
+        database_type: TIMESTAMP
+        semantic_type: type/CreationTimestamp
+      - name: ADDRESS
+        description: The street address of the account’s billing address
+        base_type: type/Text
+        database_type: CHARACTER VARYING
+      - name: LATITUDE
+        description: This is the latitude of the user on sign-up. It might be updated in the future to the last seen location.
+        base_type: type/Float
+        database_type: DOUBLE PRECISION
+        semantic_type: type/Latitude
+      - name: CITY
+        description: The city of the account’s billing address
+        base_type: type/Text
+        database_type: CHARACTER VARYING
+        semantic_type: type/City
+      - name: PASSWORD
+        description: This is the salted password of the user. It should not be visible
+        base_type: type/Text
+        database_type: CHARACTER VARYING
+      - name: LONGITUDE
+        description: This is the longitude of the user on sign-up. It might be updated in the future to the last seen location.
+        base_type: type/Float
+        database_type: DOUBLE PRECISION
+        semantic_type: type/Longitude
+      - name: ZIP
+        description: The postal code of the account’s billing address
+        base_type: type/Text
+        database_type: CHARACTER
+        semantic_type: type/ZipCode
+  - name: ORDERS
+    schema: PUBLIC
+    description: Confirmed Sample Company orders for a product, from a user.
+    fields:
+      - name: QUANTITY
+        description: Number of products bought.
+        base_type: type/Integer
+        database_type: INTEGER
+        semantic_type: type/Quantity
+      - name: DISCOUNT
+        description: Discount amount.
+        base_type: type/Float
+        database_type: DOUBLE PRECISION
+        semantic_type: type/Discount
+      - name: TOTAL
+        description: The total billed amount.
+        base_type: type/Float
+        database_type: DOUBLE PRECISION
+      - name: TAX
+        description: This is the amount of local and federal taxes that are collected on the purchase. Note that other governmental fees on some products are not included here, but instead are accounted for in the subtotal.
+        base_type: type/Float
+        database_type: DOUBLE PRECISION
+      - name: ID
+        description: This is a unique ID for the product. It is also called the “Invoice number” or “Confirmation number” in customer facing emails and screens.
+        base_type: type/BigInteger
+        database_type: BIGINT
+        semantic_type: type/PK
+      - name: SUBTOTAL
+        description: The raw, pre-tax cost of the order. Note that this might be different in the future from the product price due to promotions, credits, etc.
+        base_type: type/Float
+        database_type: DOUBLE PRECISION
+      - name: USER_ID
+        description: The id of the user who made this order. Note that in some cases where an order was created on behalf of a customer who phoned the order in, this might be the employee who handled the request.
+        base_type: type/Integer
+        database_type: INTEGER
+        semantic_type: type/FK
+      - name: CREATED_AT
+        description: The date and time an order was submitted.
+        base_type: type/DateTime
+        database_type: TIMESTAMP
+        semantic_type: type/CreationTimestamp
+      - name: PRODUCT_ID
+        description: The product ID. This is an internal identifier for the product, NOT the SKU.
+        base_type: type/Integer
+        database_type: INTEGER
+        semantic_type: type/FK
+  - name: PRODUCTS
+    schema: PUBLIC
+    description: Includes a catalog of all the products ever sold by the famed Sample Company.
+    fields:
+      - name: ID
+        description: The numerical product number. Only used internally. All external communication should use the title or EAN.
+        base_type: type/BigInteger
+        database_type: BIGINT
+        semantic_type: type/PK
+      - name: EAN
+        description: The international article number. A 13 digit number uniquely identifying the product.
+        base_type: type/Text
+        database_type: CHARACTER
+      - name: RATING
+        description: The average rating users have given the product. This ranges from 1 - 5
+        base_type: type/Float
+        database_type: DOUBLE PRECISION
+        semantic_type: type/Score
+      - name: TITLE
+        description: The name of the product as it should be displayed to customers.
+        base_type: type/Text
+        database_type: CHARACTER VARYING
+        semantic_type: type/Title
+      - name: CATEGORY
+        description: 'The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget'
+        base_type: type/Text
+        database_type: CHARACTER VARYING
+        semantic_type: type/Category
+      - name: VENDOR
+        description: The source of the product.
+        base_type: type/Text
+        database_type: CHARACTER VARYING
+        semantic_type: type/Company
+      - name: PRICE
+        description: The list price of the product. Note that this is not always the price the product sold for due to discounts, promotions, etc.
+        base_type: type/Float
+        database_type: DOUBLE PRECISION
+      - name: CREATED_AT
+        description: The date the product was added to our catalog.
+        base_type: type/DateTime
+        database_type: TIMESTAMP
+        semantic_type: type/CreationTimestamp
+  - name: REVIEWS
+    schema: PUBLIC
+    description: Reviews that Sample Company customers have left on our products.
+    fields:
+      - name: RATING
+        description: The rating (on a scale of 1-5) the user left.
+        base_type: type/Integer
+        database_type: SMALLINT
+        semantic_type: type/Score
+      - name: CREATED_AT
+        description: The day and time a review was written by a user.
+        base_type: type/DateTime
+        database_type: TIMESTAMP
+        semantic_type: type/CreationTimestamp
+      - name: ID
+        description: A unique internal identifier for the review. Should not be used externally.
+        base_type: type/BigInteger
+        database_type: BIGINT
+        semantic_type: type/PK
+      - name: PRODUCT_ID
+        description: The product the review was for
+        base_type: type/Integer
+        database_type: INTEGER
+        semantic_type: type/FK
+      - name: REVIEWER
+        description: The user who left the review
+        base_type: type/Text
+        database_type: CHARACTER VARYING
+      - name: BODY
+        description: The review the user left. Limited to 2000 characters.
+        base_type: type/Text
+        database_type: CHARACTER VARYING
+        semantic_type: type/Description
+  - name: FEEDBACK
+    schema: PUBLIC
+    description: With each order of pies sent out, Piespace includes a place for customers to submit feedback and review their order.
+    fields:
+      - name: ID
+        base_type: type/BigInteger
+        database_type: BIGINT
+        semantic_type: type/PK
+      - name: RATING
+        base_type: type/Integer
+        database_type: SMALLINT
+        semantic_type: type/Score
+      - name: RATING_MAPPED
+        base_type: type/Text
+        database_type: CHARACTER VARYING
+        semantic_type: type/Category
+      - name: ACCOUNT_ID
+        base_type: type/BigInteger
+        database_type: BIGINT
+        semantic_type: type/FK
+      - name: EMAIL
+        base_type: type/Text
+        database_type: CHARACTER VARYING
+        semantic_type: type/Email
+      - name: DATE_RECEIVED
+        base_type: type/DateTime
+        database_type: TIMESTAMP
+      - name: BODY
+        base_type: type/Text
+        database_type: CHARACTER LARGE OBJECT
+  - name: ACCOUNTS
+    schema: PUBLIC
+    description: Information on customer accounts registered with Piespace. Each account represents a new organization signing up for on-demand pies.
+    fields:
+      - name: LONGITUDE
+        base_type: type/Float
+        database_type: DOUBLE PRECISION
+        semantic_type: type/Longitude
+      - name: ID
+        base_type: type/BigInteger
+        database_type: BIGINT
+        semantic_type: type/PK
+      - name: CREATED_AT
+        base_type: type/DateTime
+        database_type: TIMESTAMP
+        semantic_type: type/CreationTimestamp
+      - name: SEATS
+        base_type: type/Integer
+        database_type: INTEGER
+      - name: LAST_NAME
+        base_type: type/Text
+        database_type: CHARACTER VARYING
+        semantic_type: type/Name
+      - name: FIRST_NAME
+        base_type: type/Text
+        database_type: CHARACTER VARYING
+        semantic_type: type/Name
+      - name: TRIAL_CONVERTED
+        base_type: type/Boolean
+        database_type: BOOLEAN
+      - name: CANCELED_AT
+        base_type: type/DateTime
+        database_type: TIMESTAMP
+        semantic_type: type/CancelationTimestamp
+      - name: TRIAL_ENDS_AT
+        base_type: type/DateTime
+        database_type: TIMESTAMP
+      - name: SOURCE
+        base_type: type/Text
+        database_type: CHARACTER VARYING
+        semantic_type: type/Source
+      - name: ACTIVE_SUBSCRIPTION
+        base_type: type/Boolean
+        database_type: BOOLEAN
+      - name: PLAN
+        base_type: type/Text
+        database_type: CHARACTER VARYING
+        semantic_type: type/Category
+      - name: LEGACY_PLAN
+        base_type: type/Boolean
+        database_type: BOOLEAN
+      - name: COUNTRY
+        base_type: type/Text
+        database_type: CHARACTER
+        semantic_type: type/Country
+      - name: LATITUDE
+        base_type: type/Float
+        database_type: DOUBLE PRECISION
+        semantic_type: type/Latitude
+      - name: EMAIL
+        base_type: type/Text
+        database_type: CHARACTER VARYING
+        semantic_type: type/Email
+  - name: ANALYTIC_EVENTS
+    schema: PUBLIC
+    description: Piespace does some anonymous analytics tracking on how users interact with their platform. They’ve only had time to implement a few events, but you know how it is. Pies come first.
+    fields:
+      - name: BUTTON_LABEL
+        base_type: type/Text
+        database_type: CHARACTER VARYING
+        semantic_type: type/Category
+      - name: EVENT
+        base_type: type/Text
+        database_type: CHARACTER VARYING
+        semantic_type: type/Category
+      - name: TIMESTAMP
+        base_type: type/DateTime
+        database_type: TIMESTAMP
+      - name: ACCOUNT_ID
+        base_type: type/BigInteger
+        database_type: BIGINT
+        semantic_type: type/FK
+      - name: PAGE_URL
+        base_type: type/Text
+        database_type: CHARACTER VARYING
+        semantic_type: type/URL
+      - name: ID
+        base_type: type/BigInteger
+        database_type: BIGINT
+        semantic_type: type/PK
+  - name: INVOICES
+    schema: PUBLIC
+    description: Confirmed payments from Piespace’s customers. Most accounts pay for their pie subscription on a monthly basis.
+    fields:
+      - name: PLAN
+        base_type: type/Text
+        database_type: CHARACTER VARYING
+        semantic_type: type/Category
+      - name: PAYMENT
+        base_type: type/Float
+        database_type: DOUBLE PRECISION
+      - name: ACCOUNT_ID
+        base_type: type/BigInteger
+        database_type: BIGINT
+        semantic_type: type/FK
+      - name: ID
+        base_type: type/BigInteger
+        database_type: BIGINT
+        semantic_type: type/PK
+      - name: EXPECTED_INVOICE
+        base_type: type/Boolean
+        database_type: BOOLEAN
+      - name: DATE_RECEIVED
+        base_type: type/DateTime
+        database_type: TIMESTAMP

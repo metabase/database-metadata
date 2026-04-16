@@ -1,0 +1,9 @@
+table_id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+name: RATING
+description: The average rating users have given the product. This ranges from 1 - 5
+base_type: type/Float
+database_type: DOUBLE PRECISION
+semantic_type: type/Score

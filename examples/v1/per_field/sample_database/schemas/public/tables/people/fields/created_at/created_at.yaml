@@ -1,0 +1,9 @@
+table_id:
+  - Sample Database
+  - PUBLIC
+  - PEOPLE
+name: CREATED_AT
+description: The date the user record was created. Also referred to as the user’s "join date"
+base_type: type/DateTime
+database_type: TIMESTAMP
+semantic_type: type/CreationTimestamp

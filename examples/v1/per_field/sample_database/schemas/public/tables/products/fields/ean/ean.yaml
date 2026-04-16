@@ -1,0 +1,8 @@
+table_id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+name: EAN
+description: The international article number. A 13 digit number uniquely identifying the product.
+base_type: type/Text
+database_type: CHARACTER

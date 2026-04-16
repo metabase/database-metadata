@@ -1,0 +1,8 @@
+table_id:
+  - Sample Database
+  - PUBLIC
+  - ACCOUNTS
+name: CANCELED_AT
+base_type: type/DateTime
+database_type: TIMESTAMP
+semantic_type: type/CancelationTimestamp
