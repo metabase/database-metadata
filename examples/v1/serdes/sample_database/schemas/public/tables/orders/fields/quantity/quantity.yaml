@@ -1,0 +1,19 @@
+name: QUANTITY
+description: Number of products bought.
+base_type: type/Integer
+database_type: INTEGER
+semantic_type: type/Quantity
+table_id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+active: true
+serdes/meta:
+  - id: Sample Database
+    model: Database
+  - id: PUBLIC
+    model: Schema
+  - id: ORDERS
+    model: Table
+  - id: QUANTITY
+    model: Field

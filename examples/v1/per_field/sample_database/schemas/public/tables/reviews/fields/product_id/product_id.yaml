@@ -1,9 +1,0 @@
-table_id:
-  - Sample Database
-  - PUBLIC
-  - REVIEWS
-name: PRODUCT_ID
-description: The product the review was for
-base_type: type/Integer
-database_type: INTEGER
-semantic_type: type/FK

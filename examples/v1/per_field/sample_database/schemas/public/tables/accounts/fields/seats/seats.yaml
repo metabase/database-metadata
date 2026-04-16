@@ -1,7 +1,0 @@
-table_id:
-  - Sample Database
-  - PUBLIC
-  - ACCOUNTS
-name: SEATS
-base_type: type/Integer
-database_type: INTEGER

@@ -1,8 +1,0 @@
-table_id:
-  - Sample Database
-  - PUBLIC
-  - ACCOUNTS
-name: COUNTRY
-base_type: type/Text
-database_type: CHARACTER
-semantic_type: type/Country

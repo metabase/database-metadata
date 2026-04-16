@@ -1,0 +1,18 @@
+name: ID
+base_type: type/BigInteger
+database_type: BIGINT
+semantic_type: type/PK
+table_id:
+  - Sample Database
+  - PUBLIC
+  - FEEDBACK
+active: true
+serdes/meta:
+  - id: Sample Database
+    model: Database
+  - id: PUBLIC
+    model: Schema
+  - id: FEEDBACK
+    model: Table
+  - id: ID
+    model: Field

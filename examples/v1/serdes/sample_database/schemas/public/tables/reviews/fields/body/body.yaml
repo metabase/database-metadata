@@ -1,0 +1,19 @@
+name: BODY
+description: The review the user left. Limited to 2000 characters.
+base_type: type/Text
+database_type: CHARACTER VARYING
+semantic_type: type/Description
+table_id:
+  - Sample Database
+  - PUBLIC
+  - REVIEWS
+active: true
+serdes/meta:
+  - id: Sample Database
+    model: Database
+  - id: PUBLIC
+    model: Schema
+  - id: REVIEWS
+    model: Table
+  - id: BODY
+    model: Field

@@ -1,0 +1,12 @@
+name: ANALYTIC_EVENTS
+schema: PUBLIC
+description: Piespace does some anonymous analytics tracking on how users interact with their platform. They’ve only had time to implement a few events, but you know how it is. Pies come first.
+db_id: Sample Database
+active: true
+serdes/meta:
+  - id: Sample Database
+    model: Database
+  - id: PUBLIC
+    model: Schema
+  - id: ANALYTIC_EVENTS
+    model: Table

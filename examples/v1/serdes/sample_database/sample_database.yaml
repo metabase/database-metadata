@@ -1,0 +1,5 @@
+name: Sample Database
+engine: h2
+serdes/meta:
+  - id: Sample Database
+    model: Database

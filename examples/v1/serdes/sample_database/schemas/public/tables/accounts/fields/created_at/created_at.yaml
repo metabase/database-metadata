@@ -1,0 +1,18 @@
+name: CREATED_AT
+base_type: type/DateTime
+database_type: TIMESTAMP
+semantic_type: type/CreationTimestamp
+table_id:
+  - Sample Database
+  - PUBLIC
+  - ACCOUNTS
+active: true
+serdes/meta:
+  - id: Sample Database
+    model: Database
+  - id: PUBLIC
+    model: Schema
+  - id: ACCOUNTS
+    model: Table
+  - id: CREATED_AT
+    model: Field

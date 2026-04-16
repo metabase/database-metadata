@@ -1,9 +1,0 @@
-table_id:
-  - Sample Database
-  - PUBLIC
-  - ORDERS
-name: CREATED_AT
-description: The date and time an order was submitted.
-base_type: type/DateTime
-database_type: TIMESTAMP
-semantic_type: type/CreationTimestamp

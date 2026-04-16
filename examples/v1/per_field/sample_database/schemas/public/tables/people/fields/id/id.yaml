@@ -1,9 +1,0 @@
-table_id:
-  - Sample Database
-  - PUBLIC
-  - PEOPLE
-name: ID
-description: A unique identifier given to each user.
-base_type: type/BigInteger
-database_type: BIGINT
-semantic_type: type/PK

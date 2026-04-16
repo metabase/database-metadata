@@ -1,4 +1,0 @@
-db_id: Sample Database
-name: ACCOUNTS
-schema: PUBLIC
-description: Information on customer accounts registered with Piespace. Each account represents a new organization signing up for on-demand pies.

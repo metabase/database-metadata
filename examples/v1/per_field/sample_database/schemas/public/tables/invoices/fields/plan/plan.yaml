@@ -1,8 +1,0 @@
-table_id:
-  - Sample Database
-  - PUBLIC
-  - INVOICES
-name: PLAN
-base_type: type/Text
-database_type: CHARACTER VARYING
-semantic_type: type/Category

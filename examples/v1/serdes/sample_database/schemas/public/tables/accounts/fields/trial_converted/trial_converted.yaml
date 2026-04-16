@@ -1,0 +1,17 @@
+name: TRIAL_CONVERTED
+base_type: type/Boolean
+database_type: BOOLEAN
+table_id:
+  - Sample Database
+  - PUBLIC
+  - ACCOUNTS
+active: true
+serdes/meta:
+  - id: Sample Database
+    model: Database
+  - id: PUBLIC
+    model: Schema
+  - id: ACCOUNTS
+    model: Table
+  - id: TRIAL_CONVERTED
+    model: Field

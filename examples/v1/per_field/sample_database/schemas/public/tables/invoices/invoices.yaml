@@ -1,4 +1,0 @@
-db_id: Sample Database
-name: INVOICES
-schema: PUBLIC
-description: Confirmed payments from Piespace’s customers. Most accounts pay for their pie subscription on a monthly basis.

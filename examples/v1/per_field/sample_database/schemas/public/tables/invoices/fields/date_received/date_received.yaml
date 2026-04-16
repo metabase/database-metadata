@@ -1,7 +1,0 @@
-table_id:
-  - Sample Database
-  - PUBLIC
-  - INVOICES
-name: DATE_RECEIVED
-base_type: type/DateTime
-database_type: TIMESTAMP

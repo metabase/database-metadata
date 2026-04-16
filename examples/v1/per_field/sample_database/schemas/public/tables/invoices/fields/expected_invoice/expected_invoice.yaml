@@ -1,7 +1,0 @@
-table_id:
-  - Sample Database
-  - PUBLIC
-  - INVOICES
-name: EXPECTED_INVOICE
-base_type: type/Boolean
-database_type: BOOLEAN

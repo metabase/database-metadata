@@ -1,9 +1,0 @@
-table_id:
-  - Sample Database
-  - PUBLIC
-  - REVIEWS
-name: BODY
-description: The review the user left. Limited to 2000 characters.
-base_type: type/Text
-database_type: CHARACTER VARYING
-semantic_type: type/Description

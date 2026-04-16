@@ -1,9 +1,0 @@
-table_id:
-  - Sample Database
-  - PUBLIC
-  - PEOPLE
-name: LATITUDE
-description: This is the latitude of the user on sign-up. It might be updated in the future to the last seen location.
-base_type: type/Float
-database_type: DOUBLE PRECISION
-semantic_type: type/Latitude

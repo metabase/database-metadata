@@ -1,9 +1,0 @@
-table_id:
-  - Sample Database
-  - PUBLIC
-  - PRODUCTS
-name: CREATED_AT
-description: The date the product was added to our catalog.
-base_type: type/DateTime
-database_type: TIMESTAMP
-semantic_type: type/CreationTimestamp

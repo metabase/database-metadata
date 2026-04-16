@@ -47,8 +47,8 @@ jobs:
             -d '{"name":"ci","group_id":2}' | jq -r '.unmasked_key')
           echo "API key created"
 
-          # Create import archive from per_field examples and POST it
-          tar czf /tmp/import.tgz -C examples/v1/per_field .
+          # Create import archive from serdes examples and POST it
+          tar czf /tmp/import.tgz -C examples/v1/serdes .
 
           HTTP_CODE=$(curl -s -o /tmp/import-response.txt -w '%{http_code}' \
             -X POST \

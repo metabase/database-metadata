@@ -1,8 +1,0 @@
-table_id:
-  - Sample Database
-  - PUBLIC
-  - PEOPLE
-name: ADDRESS
-description: The street address of the account’s billing address
-base_type: type/Text
-database_type: CHARACTER VARYING

@@ -1,4 +1,0 @@
-db_id: Sample Database
-name: FEEDBACK
-schema: PUBLIC
-description: With each order of pies sent out, Piespace includes a place for customers to submit feedback and review their order.

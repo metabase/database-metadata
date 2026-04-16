@@ -1,7 +1,0 @@
-table_id:
-  - Sample Database
-  - PUBLIC
-  - FEEDBACK
-name: BODY
-base_type: type/Text
-database_type: CHARACTER LARGE OBJECT

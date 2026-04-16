@@ -1,0 +1,12 @@
+name: REVIEWS
+schema: PUBLIC
+description: Reviews that Sample Company customers have left on our products.
+db_id: Sample Database
+active: true
+serdes/meta:
+  - id: Sample Database
+    model: Database
+  - id: PUBLIC
+    model: Schema
+  - id: REVIEWS
+    model: Table

@@ -1,9 +1,0 @@
-table_id:
-  - Sample Database
-  - PUBLIC
-  - PRODUCTS
-name: ID
-description: The numerical product number. Only used internally. All external communication should use the title or EAN.
-base_type: type/BigInteger
-database_type: BIGINT
-semantic_type: type/PK

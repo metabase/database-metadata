@@ -1,0 +1,17 @@
+name: PAYMENT
+base_type: type/Float
+database_type: DOUBLE PRECISION
+table_id:
+  - Sample Database
+  - PUBLIC
+  - INVOICES
+active: true
+serdes/meta:
+  - id: Sample Database
+    model: Database
+  - id: PUBLIC
+    model: Schema
+  - id: INVOICES
+    model: Table
+  - id: PAYMENT
+    model: Field

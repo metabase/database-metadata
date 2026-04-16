@@ -1,9 +1,0 @@
-table_id:
-  - Sample Database
-  - PUBLIC
-  - ORDERS
-name: PRODUCT_ID
-description: The product ID. This is an internal identifier for the product, NOT the SKU.
-base_type: type/Integer
-database_type: INTEGER
-semantic_type: type/FK

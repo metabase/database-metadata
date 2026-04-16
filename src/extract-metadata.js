@@ -45,34 +45,79 @@ function getTableId(db, table) {
   return [getDbId(db), table.schema ?? null, table.name];
 }
 
+function getFieldOrThrow(fieldsById, id) {
+  const field = fieldsById.get(id);
+  if (!field) {
+    throw new Error(`Field ${id} was not found`);
+  }
+  return field;
+}
+
 function getFieldId(db, table, field, fieldsById) {
+  const names = [];
+  let current = field;
+  while (current) {
+    names.unshift(current.name);
+    current = current.parent_id ? getFieldOrThrow(fieldsById, current.parent_id) : null;
+  }
+  return [...getTableId(db, table), ...names];
+}
+
+function getDatabaseSerdesMeta(db) {
+  return [{ id: db.name, model: "Database" }];
+}
+
+function getTableSerdesMeta(db, table) {
+  const meta = [{ id: db.name, model: "Database" }];
+  if (table.schema) {
+    meta.push({ id: table.schema, model: "Schema" });
+  }
+  meta.push({ id: table.name, model: "Table" });
+  return meta;
+}
+
+function getFieldSerdesMeta(db, table, field, fieldsById) {
+  const meta = getTableSerdesMeta(db, table);
   const names = [];
   let current = field;
   while (current) {
     names.unshift(current.name);
     current = current.parent_id ? fieldsById.get(current.parent_id) : null;
   }
-  return [...getTableId(db, table), ...names];
+  for (const name of names) meta.push({ id: name, model: "Field" });
+  return meta;
 }
 
-function formatDatabase(db) {
-  const { id, ...rest } = db;
-  return rest;
-}
-
-function formatTable(db, table, { includeDbId = true } = {}) {
-  const { id, db_id, ...rest } = table;
-  return includeDbId ? { db_id: getDbId(db), ...rest } : rest;
-}
-
-function formatField(db, table, field, fieldsById, { includeTableId = true } = {}) {
-  const { id, table_id, parent_id, ...rest } = field;
-  const formatted = includeTableId ? { table_id: getTableId(db, table), ...rest } : rest;
-  if (parent_id) {
-    const parent = fieldsById.get(parent_id);
-    formatted.parent_id = getFieldId(db, table, parent, fieldsById);
+function formatDatabase(db, { serdes = false } = {}) {
+  const { id, ...result } = db;
+  if (serdes) {
+    result["serdes/meta"] = getDatabaseSerdesMeta(db);
   }
-  return formatted;
+  return result;
+}
+
+function formatTable(db, table, { serdes = false } = {}) {
+  const { id, db_id,  ...result } = table;
+  result.db_id = getDbId(db);
+  if (serdes) {
+    result.active = true;
+    result["serdes/meta"] = getTableSerdesMeta(db, table);
+  }
+  return result;
+}
+
+function formatField(db, table, field, fieldsById, { serdes = false } = {}) {
+  const { id, table_id, parent_id, ...result } = field;
+  if (parent_id) {
+    const parent = getFieldOrThrow(fieldsById, parent_id);
+    result.parent_id = getFieldId(db, table, parent, fieldsById);
+  }
+  if (serdes) {
+    result.table_id = getTableId(db, table);
+    result.active = true;
+    result["serdes/meta"] = getFieldSerdesMeta(db, table, field, fieldsById);
+  }
+  return result;
 }
 
 function createFolder(folderPath) {
@@ -100,26 +145,7 @@ function buildStats(metadata) {
   };
 }
 
-function extractDatabase({ metadata, outputFolder }) {
-  const { databases, tablesByDbId, fieldsByTableId, fieldsById } = buildIndex(metadata);
-
-  for (const db of databases) {
-    const tables = (tablesByDbId.get(db.id) ?? []).map((table) => {
-      const fields = (fieldsByTableId.get(table.id) ?? []).map((field) =>
-        formatField(db, table, field, fieldsById, { includeTableId: false }),
-      );
-      return { ...formatTable(db, table, { includeDbId: false }), fields };
-    });
-
-    const dbData = { ...formatDatabase(db), tables };
-    createFolder(getDatabaseFolder(outputFolder, db));
-    writeYaml(getDatabasePath(outputFolder, db), dbData);
-  }
-
-  return buildStats(metadata);
-}
-
-function extractTable({ metadata, outputFolder }) {
+function extractDefault({ metadata, outputFolder }) {
   const { databases, tablesByDbId, fieldsByTableId, fieldsById } = buildIndex(metadata);
 
   for (const db of databases) {
@@ -128,7 +154,7 @@ function extractTable({ metadata, outputFolder }) {
 
     for (const table of tablesByDbId.get(db.id) ?? []) {
       const fields = (fieldsByTableId.get(table.id) ?? []).map((field) =>
-        formatField(db, table, field, fieldsById, { includeTableId: false }),
+        formatField(db, table, field, fieldsById),
       );
       createFolder(getTableFolder(outputFolder, db, table));
       writeYaml(getTablePath(outputFolder, db, table), { ...formatTable(db, table), fields });
@@ -138,20 +164,23 @@ function extractTable({ metadata, outputFolder }) {
   return buildStats(metadata);
 }
 
-function extractField({ metadata, outputFolder }) {
+function extractSerdes({ metadata, outputFolder }) {
   const { databases, tablesByDbId, fieldsByTableId, fieldsById } = buildIndex(metadata);
 
   for (const db of databases) {
     createFolder(getDatabaseFolder(outputFolder, db));
-    writeYaml(getDatabasePath(outputFolder, db), formatDatabase(db));
+    writeYaml(getDatabasePath(outputFolder, db), formatDatabase(db, { serdes: true }));
 
     for (const table of tablesByDbId.get(db.id) ?? []) {
       createFolder(getTableFolder(outputFolder, db, table));
-      writeYaml(getTablePath(outputFolder, db, table), formatTable(db, table));
+      writeYaml(getTablePath(outputFolder, db, table), formatTable(db, table, { serdes: true }));
 
       for (const field of fieldsByTableId.get(table.id) ?? []) {
         createFolder(getFieldFolder(outputFolder, db, table, field));
-        writeYaml(getFieldPath(outputFolder, db, table, field), formatField(db, table, field, fieldsById));
+        writeYaml(
+          getFieldPath(outputFolder, db, table, field),
+          formatField(db, table, field, fieldsById, { serdes: true }),
+        );
       }
     }
   }
@@ -159,15 +188,13 @@ function extractField({ metadata, outputFolder }) {
   return buildStats(metadata);
 }
 
-export function extractMetadata({ inputFile, outputFolder, level }) {
+export function extractMetadata({ inputFile, outputFolder, mode }) {
   const metadata = JSON.parse(readFileSync(inputFile, "utf-8"));
 
-  switch (level) {
-    case "database":
-      return extractDatabase({ metadata, outputFolder });
-    case "table":
-      return extractTable({ metadata, outputFolder });
-    case "field":
-      return extractField({ metadata, outputFolder });
+  switch (mode) {
+    case "default":
+      return extractDefault({ metadata, outputFolder });
+    case "serdes":
+      return extractSerdes({ metadata, outputFolder });
   }
 }

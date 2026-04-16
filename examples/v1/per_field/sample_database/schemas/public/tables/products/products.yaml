@@ -1,4 +1,0 @@
-db_id: Sample Database
-name: PRODUCTS
-schema: PUBLIC
-description: Includes a catalog of all the products ever sold by the famed Sample Company.

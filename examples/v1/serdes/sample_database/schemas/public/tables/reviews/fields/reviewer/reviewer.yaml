@@ -1,0 +1,18 @@
+name: REVIEWER
+description: The user who left the review
+base_type: type/Text
+database_type: CHARACTER VARYING
+table_id:
+  - Sample Database
+  - PUBLIC
+  - REVIEWS
+active: true
+serdes/meta:
+  - id: Sample Database
+    model: Database
+  - id: PUBLIC
+    model: Schema
+  - id: REVIEWS
+    model: Table
+  - id: REVIEWER
+    model: Field

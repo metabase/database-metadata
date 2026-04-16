@@ -1,8 +1,0 @@
-table_id:
-  - Sample Database
-  - PUBLIC
-  - ANALYTIC_EVENTS
-name: PAGE_URL
-base_type: type/Text
-database_type: CHARACTER VARYING
-semantic_type: type/URL

@@ -1,0 +1,19 @@
+name: TITLE
+description: The name of the product as it should be displayed to customers.
+base_type: type/Text
+database_type: CHARACTER VARYING
+semantic_type: type/Title
+table_id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+active: true
+serdes/meta:
+  - id: Sample Database
+    model: Database
+  - id: PUBLIC
+    model: Schema
+  - id: PRODUCTS
+    model: Table
+  - id: TITLE
+    model: Field

@@ -1,7 +1,0 @@
-table_id:
-  - Sample Database
-  - PUBLIC
-  - ACCOUNTS
-name: TRIAL_ENDS_AT
-base_type: type/DateTime
-database_type: TIMESTAMP

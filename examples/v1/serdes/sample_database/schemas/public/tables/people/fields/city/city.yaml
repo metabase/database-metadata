@@ -1,0 +1,19 @@
+name: CITY
+description: The city of the account’s billing address
+base_type: type/Text
+database_type: CHARACTER VARYING
+semantic_type: type/City
+table_id:
+  - Sample Database
+  - PUBLIC
+  - PEOPLE
+active: true
+serdes/meta:
+  - id: Sample Database
+    model: Database
+  - id: PUBLIC
+    model: Schema
+  - id: PEOPLE
+    model: Table
+  - id: CITY
+    model: Field

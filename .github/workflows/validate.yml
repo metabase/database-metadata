@@ -17,20 +17,14 @@ jobs:
 
       - run: bun install
 
-      - name: Extract per-database
-        run: bun run bin/cli.js extract-metadata examples/v1/metadata.json /tmp/per_database --level database
+      - name: Extract default mode
+        run: bun run bin/cli.js extract-metadata examples/v1/metadata.json /tmp/default --mode default
 
-      - name: Extract per-table
-        run: bun run bin/cli.js extract-metadata examples/v1/metadata.json /tmp/per_table --level table
+      - name: Extract serdes mode
+        run: bun run bin/cli.js extract-metadata examples/v1/metadata.json /tmp/serdes --mode serdes
 
-      - name: Extract per-field
-        run: bun run bin/cli.js extract-metadata examples/v1/metadata.json /tmp/per_field --level field
+      - name: Diff default
+        run: diff -r examples/v1/default /tmp/default
 
-      - name: Diff per-database
-        run: diff -r examples/v1/per_database /tmp/per_database
-
-      - name: Diff per-table
-        run: diff -r examples/v1/per_table /tmp/per_table
-
-      - name: Diff per-field
-        run: diff -r examples/v1/per_field /tmp/per_field
+      - name: Diff serdes
+        run: diff -r examples/v1/serdes /tmp/serdes

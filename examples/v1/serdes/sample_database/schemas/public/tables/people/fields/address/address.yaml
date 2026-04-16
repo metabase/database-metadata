@@ -1,0 +1,18 @@
+name: ADDRESS
+description: The street address of the account’s billing address
+base_type: type/Text
+database_type: CHARACTER VARYING
+table_id:
+  - Sample Database
+  - PUBLIC
+  - PEOPLE
+active: true
+serdes/meta:
+  - id: Sample Database
+    model: Database
+  - id: PUBLIC
+    model: Schema
+  - id: PEOPLE
+    model: Table
+  - id: ADDRESS
+    model: Field

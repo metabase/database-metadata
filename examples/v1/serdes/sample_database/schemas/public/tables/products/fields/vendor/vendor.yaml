@@ -1,0 +1,19 @@
+name: VENDOR
+description: The source of the product.
+base_type: type/Text
+database_type: CHARACTER VARYING
+semantic_type: type/Company
+table_id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+active: true
+serdes/meta:
+  - id: Sample Database
+    model: Database
+  - id: PUBLIC
+    model: Schema
+  - id: PRODUCTS
+    model: Table
+  - id: VENDOR
+    model: Field

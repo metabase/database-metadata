@@ -1,9 +1,0 @@
-table_id:
-  - Sample Database
-  - PUBLIC
-  - ORDERS
-name: QUANTITY
-description: Number of products bought.
-base_type: type/Integer
-database_type: INTEGER
-semantic_type: type/Quantity

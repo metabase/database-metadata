@@ -1,8 +1,0 @@
-table_id:
-  - Sample Database
-  - PUBLIC
-  - ACCOUNTS
-name: LONGITUDE
-base_type: type/Float
-database_type: DOUBLE PRECISION
-semantic_type: type/Longitude

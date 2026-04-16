@@ -1,0 +1,17 @@
+name: BODY
+base_type: type/Text
+database_type: CHARACTER LARGE OBJECT
+table_id:
+  - Sample Database
+  - PUBLIC
+  - FEEDBACK
+active: true
+serdes/meta:
+  - id: Sample Database
+    model: Database
+  - id: PUBLIC
+    model: Schema
+  - id: FEEDBACK
+    model: Table
+  - id: BODY
+    model: Field

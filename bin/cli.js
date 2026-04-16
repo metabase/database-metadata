@@ -6,7 +6,7 @@ import { extractMetadata } from "../src/extract-metadata.js";
 const { values, positionals } = parseArgs({
   allowPositionals: true,
   options: {
-    level: { type: "string", default: "table" },
+    mode: { type: "string", default: "default" },
     help: { type: "boolean", short: "h", default: false },
   },
 });
@@ -23,13 +23,12 @@ Arguments:
   <output-folder>     Output folder for YAML files
 
 Options:
-  --level <level>     Nesting level: database, table, or field (default: table)
+  --mode <mode>       Output mode: default or serdes (default: default)
   -h, --help          Show this help message
 
-Levels:
-  database    One YAML per database (tables and fields nested inside)
-  table       One YAML per database + one per table (fields nested in tables)
-  field       One YAML per database + one per table + one per field`;
+Modes:
+  default    One YAML per database + one per table with fields nested inside
+  serdes     Separate YAML per database, table, and field, each with serdes/meta`;
 
 if (values.help || !command) {
   console.log(HELP);
@@ -45,13 +44,13 @@ if (command === "extract-metadata") {
     process.exit(1);
   }
 
-  const level = values.level;
-  if (!["database", "table", "field"].includes(level)) {
-    console.error(`Error: --level must be one of: database, table, field`);
+  const mode = values.mode;
+  if (!["default", "serdes"].includes(mode)) {
+    console.error(`Error: --mode must be one of: default, serdes`);
     process.exit(1);
   }
 
-  const stats = extractMetadata({ inputFile, outputFolder, level });
+  const stats = extractMetadata({ inputFile, outputFolder, mode });
   console.log(
     `Extracted ${stats.databases} databases, ${stats.tables} tables, ${stats.fields} fields`,
   );

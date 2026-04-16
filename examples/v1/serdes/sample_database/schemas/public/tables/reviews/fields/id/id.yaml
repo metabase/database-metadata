@@ -1,0 +1,19 @@
+name: ID
+description: A unique internal identifier for the review. Should not be used externally.
+base_type: type/BigInteger
+database_type: BIGINT
+semantic_type: type/PK
+table_id:
+  - Sample Database
+  - PUBLIC
+  - REVIEWS
+active: true
+serdes/meta:
+  - id: Sample Database
+    model: Database
+  - id: PUBLIC
+    model: Schema
+  - id: REVIEWS
+    model: Table
+  - id: ID
+    model: Field

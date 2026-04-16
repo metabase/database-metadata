@@ -1,9 +1,0 @@
-table_id:
-  - Sample Database
-  - PUBLIC
-  - REVIEWS
-name: CREATED_AT
-description: The day and time a review was written by a user.
-base_type: type/DateTime
-database_type: TIMESTAMP
-semantic_type: type/CreationTimestamp

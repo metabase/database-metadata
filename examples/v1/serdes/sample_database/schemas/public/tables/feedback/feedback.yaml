@@ -1,0 +1,12 @@
+name: FEEDBACK
+schema: PUBLIC
+description: With each order of pies sent out, Piespace includes a place for customers to submit feedback and review their order.
+db_id: Sample Database
+active: true
+serdes/meta:
+  - id: Sample Database
+    model: Database
+  - id: PUBLIC
+    model: Schema
+  - id: FEEDBACK
+    model: Table

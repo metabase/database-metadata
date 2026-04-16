@@ -1,8 +1,0 @@
-table_id:
-  - Sample Database
-  - PUBLIC
-  - ORDERS
-name: TOTAL
-description: The total billed amount.
-base_type: type/Float
-database_type: DOUBLE PRECISION

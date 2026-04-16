@@ -1,4 +1,0 @@
-db_id: Sample Database
-name: PEOPLE
-schema: PUBLIC
-description: Information on the user accounts registered with Sample Company.

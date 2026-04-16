@@ -1,0 +1,17 @@
+name: SEATS
+base_type: type/Integer
+database_type: INTEGER
+table_id:
+  - Sample Database
+  - PUBLIC
+  - ACCOUNTS
+active: true
+serdes/meta:
+  - id: Sample Database
+    model: Database
+  - id: PUBLIC
+    model: Schema
+  - id: ACCOUNTS
+    model: Table
+  - id: SEATS
+    model: Field

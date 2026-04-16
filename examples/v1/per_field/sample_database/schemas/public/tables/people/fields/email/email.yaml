@@ -1,9 +1,0 @@
-table_id:
-  - Sample Database
-  - PUBLIC
-  - PEOPLE
-name: EMAIL
-description: The contact email for the account.
-base_type: type/Text
-database_type: CHARACTER VARYING
-semantic_type: type/Email

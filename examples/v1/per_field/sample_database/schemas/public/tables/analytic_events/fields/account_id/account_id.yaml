@@ -1,8 +1,0 @@
-table_id:
-  - Sample Database
-  - PUBLIC
-  - ANALYTIC_EVENTS
-name: ACCOUNT_ID
-base_type: type/BigInteger
-database_type: BIGINT
-semantic_type: type/FK
