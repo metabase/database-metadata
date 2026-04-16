@@ -7,7 +7,6 @@ import { extractSpec } from "../src/extract-spec.js";
 const { values, positionals } = parseArgs({
   allowPositionals: true,
   options: {
-    mode: { type: "string", default: "default" },
     file: { type: "string" },
     help: { type: "boolean", short: "h", default: false },
   },
@@ -19,17 +18,14 @@ const HELP = `Usage: database-metadata <command> [arguments] [options]
 
 Commands:
   extract-metadata <input-file> <output-folder>   Extract metadata JSON into YAML files
-    --mode <mode>      Output mode: default or serdes (default: default)
+                                                  Writes one YAML per database + one per table
+                                                  with fields nested inside.
 
   extract-spec                                    Copy the bundled spec.md into a target file
     --file <path>      Destination file (default: ./spec.md)
 
 Options:
-  -h, --help           Show this help message
-
-Modes:
-  default    One YAML per database + one per table with fields nested inside
-  serdes     Separate YAML per database, table, and field, each with serdes/meta`;
+  -h, --help           Show this help message`;
 
 if (values.help || !command) {
   console.log(HELP);
@@ -45,13 +41,7 @@ if (command === "extract-metadata") {
     process.exit(1);
   }
 
-  const mode = values.mode;
-  if (!["default", "serdes"].includes(mode)) {
-    console.error(`Error: --mode must be one of: default, serdes`);
-    process.exit(1);
-  }
-
-  const stats = extractMetadata({ inputFile, outputFolder, mode });
+  const stats = extractMetadata({ inputFile, outputFolder });
   console.log(
     `Extracted ${stats.databases} databases, ${stats.tables} tables, ${stats.fields} fields`,
   );

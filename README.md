@@ -7,7 +7,7 @@ This repository contains the specification, examples, and a CLI that converts th
 ## Contents
 
 - **[core-spec/v1/spec.md](core-spec/v1/spec.md)** — Full specification (v1.0.0) covering entity keys, field types, folder structure, and each entity shape.
-- **[examples/v1/](examples/v1/)** — Reference output using the Sample Database, in both modes.
+- **[examples/v1/](examples/v1/)** — Reference output using the Sample Database.
 - **[src/](src/)** / **[bin/](bin/)** — The CLI implementation.
 
 ## Entities
@@ -38,25 +38,17 @@ The response is a flat structure with three arrays — `databases`, `tables`, an
 ### Extract metadata to YAML
 
 ```sh
-bunx @metabase/database-metadata extract-metadata <input-file> <output-folder> [--mode <mode>]
+bunx @metabase/database-metadata extract-metadata <input-file> <output-folder>
 ```
 
 - `<input-file>` — path to the `metadata.json` produced by the API.
-- `<output-folder>` — destination directory. By convention this is `.metabase/databases` at the project root (see [spec.md](core-spec/v1/spec.md#folder-structure)). Database folders are created directly under it, so pass `.metabase/databases` to get a `databases/` parent.
-- `--mode` — either `default` (the default) or `serdes`.
+- `<output-folder>` — destination directory. By convention this is `.metabase/databases` at the project root (see [spec.md](core-spec/v1/spec.md#folder-structure)). Database folders are created directly under it.
 
 The typical end-to-end invocation:
 
 ```sh
 bunx @metabase/database-metadata extract-metadata .metabase/metadata.json .metabase/databases
 ```
-
-#### Modes
-
-| Mode | Purpose | Layout |
-|------|---------|--------|
-| `default` | Compact on-disk representation for agent and human access. Diff-friendly, minimal. | One YAML per database + one per table with fields nested inside. No `serdes/meta`. |
-| `serdes`  | The format expected by Metabase's serialization importer (`POST /api/ee/serialization/import`). | Separate YAML per database, table, and field — each with `serdes/meta`, `active: true`, and full foreign-key tuples. |
 
 ### Extract the spec
 
@@ -83,7 +75,4 @@ bun install
 bun bin/cli.js extract-metadata examples/v1/metadata.json /tmp/.metabase/databases
 ```
 
-GitHub workflows in addition to the release workflow:
-
-- **Validate** — regenerates the bundled examples on every push and fails if they drift from what's checked in.
-- **Import** — feeds the `serdes` example folder into a fresh Metabase Enterprise container and asserts that `/api/ee/serialization/import` returns `200`.
+The **Validate** GitHub workflow regenerates the bundled examples on every push and fails if they drift from what's checked in.

@@ -1,5 +1,0 @@
-name: Sample Database
-engine: postgres
-serdes/meta:
-  - id: Sample Database
-    model: Database
