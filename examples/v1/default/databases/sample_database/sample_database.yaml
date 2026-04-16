@@ -1,2 +1,2 @@
 name: Sample Database
-engine: h2
+engine: postgres

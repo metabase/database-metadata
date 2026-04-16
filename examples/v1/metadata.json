@@ -3,7 +3,7 @@
     {
       "id": 1,
       "name": "Sample Database",
-      "engine": "h2"
+      "engine": "postgres"
     }
   ],
   "tables": [
