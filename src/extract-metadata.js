@@ -34,36 +34,12 @@ function getTableId(db, table) {
   return [getDbId(db), table.schema ?? null, table.name];
 }
 
-function getFieldOrThrow(fieldsById, id) {
-  const field = fieldsById.get(id);
-  if (!field) {
-    throw new Error(`Field ${id} was not found`);
-  }
-  return field;
-}
-
-function getTableOrThrow(tablesById, id) {
-  const table = tablesById.get(id);
-  if (!table) {
-    throw new Error(`Table ${id} was not found`);
-  }
-  return table;
-}
-
-function getDatabaseOrThrow(databasesById, id) {
-  const database = databasesById.get(id);
-  if (!database) {
-    throw new Error(`Database ${id} was not found`);
-  }
-  return database;
-}
-
 function getFieldId(db, table, field, fieldsById) {
   const names = [];
   let current = field;
   while (current) {
     names.unshift(current.name);
-    current = current.parent_id ? getFieldOrThrow(fieldsById, current.parent_id) : null;
+    current = current.parent_id ? fieldsById.get(current.parent_id) : null;
   }
   return [...getTableId(db, table), ...names];
 }
@@ -82,15 +58,20 @@ function formatTable(db, table) {
 function formatField(db, table, field, index) {
   const { fieldsById, tablesById, databasesById } = index;
   const { id, table_id, parent_id, fk_target_field_id, ...result } = field;
+  // Silently drop parent_id / fk_target_field_id if the referenced entity can't be resolved.
   if (parent_id) {
-    const parent = getFieldOrThrow(fieldsById, parent_id);
-    result.parent_id = getFieldId(db, table, parent, fieldsById);
+    const parent = fieldsById.get(parent_id);
+    if (parent) {
+      result.parent_id = getFieldId(db, table, parent, fieldsById);
+    }
   }
   if (fk_target_field_id) {
-    const targetField = getFieldOrThrow(fieldsById, fk_target_field_id);
-    const targetTable = getTableOrThrow(tablesById, targetField.table_id);
-    const targetDb = getDatabaseOrThrow(databasesById, targetTable.db_id);
-    result.fk_target_field_id = getFieldId(targetDb, targetTable, targetField, fieldsById);
+    const targetField = fieldsById.get(fk_target_field_id);
+    const targetTable = targetField && tablesById.get(targetField.table_id);
+    const targetDb = targetTable && databasesById.get(targetTable.db_id);
+    if (targetDb) {
+      result.fk_target_field_id = getFieldId(targetDb, targetTable, targetField, fieldsById);
+    }
   }
   return result;
 }
