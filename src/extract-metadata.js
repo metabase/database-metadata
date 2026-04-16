@@ -10,15 +10,19 @@ function slugify(name) {
 }
 
 function getDatabaseFolder(outputFolder, db) {
-  return join(outputFolder, "databases", slugify(db.name));
+  return join(outputFolder, slugify(db.name));
+}
+
+function getTablesFolder(outputFolder, db, table) {
+  const dbFolder = getDatabaseFolder(outputFolder, db);
+  if (table.schema) {
+    return join(dbFolder, "schemas", slugify(table.schema), "tables");
+  }
+  return join(dbFolder, "tables");
 }
 
 function getTableFolder(outputFolder, db, table) {
-  const dbFolder = getDatabaseFolder(outputFolder, db);
-  if (table.schema) {
-    return join(dbFolder, "schemas", slugify(table.schema), "tables", slugify(table.name));
-  }
-  return join(dbFolder, "tables", slugify(table.name));
+  return join(getTablesFolder(outputFolder, db, table), slugify(table.name));
 }
 
 function getFieldFolder(outputFolder, db, table, field) {
@@ -29,8 +33,11 @@ function getDatabasePath(outputFolder, db) {
   return join(getDatabaseFolder(outputFolder, db), `${slugify(db.name)}.yaml`);
 }
 
-function getTablePath(outputFolder, db, table) {
-  return join(getTableFolder(outputFolder, db, table), `${slugify(table.name)}.yaml`);
+function getTablePath(outputFolder, db, table, { serdes = false } = {}) {
+  const parent = serdes
+    ? getTableFolder(outputFolder, db, table)
+    : getTablesFolder(outputFolder, db, table);
+  return join(parent, `${slugify(table.name)}.yaml`);
 }
 
 function getFieldPath(outputFolder, db, table, field) {
@@ -156,8 +163,11 @@ function extractDefault({ metadata, outputFolder }) {
       const fields = (fieldsByTableId.get(table.id) ?? []).map((field) =>
         formatField(db, table, field, fieldsById),
       );
-      createFolder(getTableFolder(outputFolder, db, table));
-      writeYaml(getTablePath(outputFolder, db, table), { ...formatTable(db, table), fields });
+      createFolder(getTablesFolder(outputFolder, db, table));
+      writeYaml(getTablePath(outputFolder, db, table), {
+        ...formatTable(db, table),
+        fields,
+      });
     }
   }
 
@@ -173,7 +183,10 @@ function extractSerdes({ metadata, outputFolder }) {
 
     for (const table of tablesByDbId.get(db.id) ?? []) {
       createFolder(getTableFolder(outputFolder, db, table));
-      writeYaml(getTablePath(outputFolder, db, table), formatTable(db, table, { serdes: true }));
+      writeYaml(
+        getTablePath(outputFolder, db, table, { serdes: true }),
+        formatTable(db, table, { serdes: true }),
+      );
 
       for (const field of fieldsByTableId.get(table.id) ?? []) {
         createFolder(getFieldFolder(outputFolder, db, table, field));

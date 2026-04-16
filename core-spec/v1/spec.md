@@ -128,11 +128,9 @@ export-root/
         ├── schemas/
         │   └── {schema_slug}/
         │       └── tables/
-        │           └── {table_slug}/
-        │               └── {table_slug}.yaml
+        │           └── {table_slug}.yaml
         └── tables/                         # Schemaless databases
-            └── {table_slug}/
-                └── {table_slug}.yaml
+            └── {table_slug}.yaml
 ```
 
 ### Path Construction Rules
@@ -170,7 +168,7 @@ engine: postgres
 
 A `Table` entry describes a single physical table (or view) within a database. Its fields are nested directly in the same YAML file.
 
-The table YAML file lives at `databases/{db_slug}/schemas/{schema_slug}/tables/{table_slug}/{table_slug}.yaml` (or `databases/{db_slug}/tables/{table_slug}/{table_slug}.yaml` for schemaless databases).
+The table YAML file lives at `databases/{db_slug}/schemas/{schema_slug}/tables/{table_slug}.yaml` (or `databases/{db_slug}/tables/{table_slug}.yaml` for schemaless databases).
 
 ### Schema
 
