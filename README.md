@@ -27,9 +27,10 @@ See [core-spec/v1/spec.md](core-spec/v1/spec.md) for the full schema of each ent
 The CLI operates on a JSON snapshot produced by Metabase's `GET /api/database/metadata` endpoint. Fetch it against any running Metabase instance:
 
 ```sh
+mkdir -p .metabase
 curl "https://my.metabase/api/database/metadata" \
   -H "X-Metabase-Session: $SESSION_TOKEN" \
-  > metadata.json
+  > .metabase/metadata.json
 ```
 
 The response is a flat structure with three arrays — `databases`, `tables`, and `fields` — streamed for large schemas. Authenticate with either a session token (`X-Metabase-Session`) or an API key (`X-API-Key`).
@@ -41,8 +42,14 @@ bunx @metabase/database-metadata extract-metadata <input-file> <output-folder> [
 ```
 
 - `<input-file>` — path to the `metadata.json` produced by the API.
-- `<output-folder>` — destination directory. Database folders are created directly under it; pass `.../databases` if you need a `databases/` parent (for example to feed the archive to the serialization importer).
+- `<output-folder>` — destination directory. By convention this is `.metabase/databases` at the project root (see [spec.md](core-spec/v1/spec.md#folder-structure)). Database folders are created directly under it, so pass `.metabase/databases` to get a `databases/` parent.
 - `--mode` — either `default` (the default) or `serdes`.
+
+The typical end-to-end invocation:
+
+```sh
+bunx @metabase/database-metadata extract-metadata .metabase/metadata.json .metabase/databases
+```
 
 #### Modes
 
@@ -73,7 +80,7 @@ The workflow requires an `NPM_RELEASE_TOKEN` secret with publish access to the `
 
 ```sh
 bun install
-bun bin/cli.js extract-metadata examples/v1/metadata.json /tmp/out/databases
+bun bin/cli.js extract-metadata examples/v1/metadata.json /tmp/.metabase/databases
 ```
 
 GitHub workflows in addition to the release workflow:

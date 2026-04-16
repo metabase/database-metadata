@@ -120,8 +120,10 @@ Common semantic types, grouped by purpose:
 
 ## Folder Structure
 
+By convention, metadata is stored under `.metabase/databases/` at the root of the consuming project — for example a repo that tracks representations and runs `@metabase/database-metadata` from CI. The exporter itself doesn't enforce this location; it writes the tree below into whatever folder the caller passes.
+
 ```
-export-root/
+.metabase/
 └── databases/
     └── {database_slug}/
         ├── {database_slug}.yaml
