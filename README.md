@@ -4,13 +4,13 @@ Metabase represents database metadata — synced databases, their tables, and th
 
 This repository contains the specification, examples, and a CLI that converts the JSON returned by Metabase's `GET /api/database/metadata` endpoint into YAML.
 
-## Contents
+## Specification
 
-- **[core-spec/v1/spec.md](core-spec/v1/spec.md)** — Full specification (v1.0.0) covering entity keys, field types, folder structure, and each entity shape.
-- **[examples/v1/](examples/v1/)** — Reference output using the Sample Database.
-- **[src/](src/)** / **[bin/](bin/)** — The CLI implementation.
+The format is defined in **[core-spec/v1/spec.md](core-spec/v1/spec.md)** (v1.0.0). It covers entity keys, field types, folder structure, and the shape of each entity.
 
-## Entities
+Reference output for the Sample Database lives in **[examples/v1/](examples/v1/)** — both the raw `metadata.json` returned by the endpoint and the extracted YAML tree.
+
+### Entities
 
 | Entity | Description |
 |--------|-------------|
@@ -18,47 +18,97 @@ This repository contains the specification, examples, and a CLI that converts th
 | Table | A physical table (or view) inside a database |
 | Field | A column on a table, including JSON-unfolded nested fields |
 
-See [core-spec/v1/spec.md](core-spec/v1/spec.md) for the full schema of each entity.
+## Obtaining metadata
 
-## CLI
+Metadata is fetched on demand from a running Metabase instance via `GET /api/database/metadata`. The response is a flat JSON document with three arrays — `databases`, `tables`, and `fields` — streamed so that even warehouses with very large schemas can be exported without exhausting server memory.
 
-### Input: `metadata.json`
-
-The CLI operates on a JSON snapshot produced by Metabase's `GET /api/database/metadata` endpoint. Fetch it against any running Metabase instance:
+Authenticate with either a session token (`X-Metabase-Session`) or an API key (`X-API-Key`):
 
 ```sh
-mkdir -p .metabase
-curl "https://my.metabase/api/database/metadata" \
-  -H "X-Metabase-Session: $SESSION_TOKEN" \
-  > .metabase/metadata.json
+curl "$METABASE_URL/api/database/metadata" \
+  -H "X-API-Key: $METABASE_API_KEY" \
+  -o metadata.json
 ```
 
-The response is a flat structure with three arrays — `databases`, `tables`, and `fields` — streamed for large schemas. Authenticate with either a session token (`X-Metabase-Session`) or an API key (`X-API-Key`).
+### Extracting metadata to YAML
 
-### Extract metadata to YAML
+The CLI turns that JSON into the human- and agent-friendly YAML tree described in the spec:
 
 ```sh
 bunx @metabase/database-metadata extract-metadata <input-file> <output-folder>
 ```
 
 - `<input-file>` — path to the `metadata.json` produced by the API.
-- `<output-folder>` — destination directory. By convention this is `.metabase/databases` at the project root (see [spec.md](core-spec/v1/spec.md#folder-structure)). Database folders are created directly under it.
+- `<output-folder>` — destination directory. Database folders are created directly under it.
 
-The typical end-to-end invocation:
+### Extracting the spec
 
-```sh
-bunx @metabase/database-metadata extract-metadata .metabase/metadata.json .metabase/databases
-```
-
-### Extract the spec
-
-Copy the bundled `spec.md` to a target file:
+The bundled spec can be extracted to any file — convenient for agents that need to read it locally:
 
 ```sh
 bunx @metabase/database-metadata extract-spec --file ./spec.md
 ```
 
 Omit `--file` to write `spec.md` into the current directory.
+
+## Recommended workflow
+
+The following is the **default** workflow for a project that wants to use Metabase metadata. It is a convention, not a requirement — teams are free to organize things differently.
+
+### 1. A `.metabase/` directory at the repo root
+
+Create a top-level `.metabase/` directory and **add it to `.gitignore`**. This is where the raw `metadata.json` and the extracted `databases/` YAML tree live:
+
+```
+.metabase/
+├── metadata.json
+└── databases/
+    └── …
+```
+
+### 2. Why `.metabase/` should not be committed
+
+On a large data warehouse the metadata export can easily reach **hundreds of megabytes or several gigabytes**. Committing it:
+
+- bloats the repository and slows every clone and fetch,
+- produces noisy diffs on unrelated PRs whenever someone resyncs,
+- can make the repo effectively unusable for CI and for new contributors.
+
+Each developer (or a CI job) fetches metadata on demand from their own Metabase instance instead.
+
+### 3. Credentials via a gitignored `.env` file
+
+Check in an **`.env.template`** at the repo root with placeholders:
+
+```env
+METABASE_URL=https://metabase.example.com
+METABASE_API_KEY=
+```
+
+Each developer copies it to `.env` (also gitignored) and fills in the real values:
+
+```sh
+cp .env.template .env
+# edit .env to set METABASE_URL and METABASE_API_KEY
+```
+
+### 4. Fetch and extract on demand
+
+With `.env` populated, the end-to-end flow is:
+
+```sh
+set -a; source .env; set +a
+
+mkdir -p .metabase
+curl -sf "$METABASE_URL/api/database/metadata" \
+  -H "X-API-Key: $METABASE_API_KEY" \
+  -o .metabase/metadata.json
+
+rm -rf .metabase/databases
+bunx @metabase/database-metadata extract-metadata .metabase/metadata.json .metabase/databases
+```
+
+After this, tools and agents should read the YAML tree under `.metabase/databases/` — not `metadata.json`, which exists only as input to the extractor.
 
 ## Publishing to NPM
 
