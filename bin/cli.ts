@@ -1,18 +1,14 @@
 #!/usr/bin/env node
 
 import { parseArgs } from "node:util";
+
 import { extractMetadata } from "../src/extract-metadata.js";
 import { extractSpec } from "../src/extract-spec.js";
 
-const { values, positionals } = parseArgs({
-  allowPositionals: true,
-  options: {
-    file: { type: "string" },
-    help: { type: "boolean", short: "h", default: false },
-  },
-});
-
-const command = positionals[0];
+type ParsedValues = {
+  file?: string;
+  help?: boolean;
+};
 
 const HELP = `Usage: database-metadata <command> [arguments] [options]
 
@@ -27,17 +23,24 @@ Commands:
 Options:
   -h, --help           Show this help message`;
 
-if (values.help || !command) {
-  console.log(HELP);
-  process.exit(command ? 0 : 1);
+function parseArguments() {
+  return parseArgs({
+    allowPositionals: true,
+    options: {
+      file: { type: "string" },
+      help: { type: "boolean", short: "h", default: false },
+    },
+  });
 }
 
-if (command === "extract-metadata") {
+function handleExtractMetadata(positionals: string[]): void {
   const inputFile = positionals[1];
   const outputFolder = positionals[2];
 
   if (!inputFile || !outputFolder) {
-    console.error("Error: both <input-file> and <output-folder> arguments are required");
+    console.error(
+      "Error: both <input-file> and <output-folder> arguments are required",
+    );
     process.exit(1);
   }
 
@@ -48,11 +51,30 @@ if (command === "extract-metadata") {
   process.exit(0);
 }
 
-if (command === "extract-spec") {
+function handleExtractSpec(values: ParsedValues): void {
   const { target } = extractSpec({ file: values.file ?? "spec.md" });
   console.log(`Spec extracted to ${target}`);
   process.exit(0);
 }
 
-console.error(`Unknown command: ${command}`);
-process.exit(1);
+function main(): void {
+  const { values, positionals } = parseArguments();
+  const command = positionals[0];
+
+  if (values.help || !command) {
+    console.log(HELP);
+    process.exit(values.help ? 0 : 1);
+  }
+
+  switch (command) {
+    case "extract-metadata":
+      return handleExtractMetadata(positionals);
+    case "extract-spec":
+      return handleExtractSpec(values);
+    default:
+      console.error(`Unknown command: ${command}`);
+      process.exit(1);
+  }
+}
+
+main();

@@ -18,7 +18,7 @@ jobs:
       - run: bun install
 
       - name: Extract metadata
-        run: bun run bin/cli.js extract-metadata examples/v1/metadata.json /tmp/databases
+        run: bun run bin/cli.ts extract-metadata examples/v1/metadata.json /tmp/databases
 
       - name: Diff examples
         run: diff -r examples/v1/databases /tmp/databases

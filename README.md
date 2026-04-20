@@ -122,7 +122,15 @@ The workflow requires an `NPM_RELEASE_TOKEN` secret with publish access to the `
 
 ```sh
 bun install
-bun bin/cli.js extract-metadata examples/v1/metadata.json /tmp/.metabase/databases
+bun bin/cli.ts extract-metadata examples/v1/metadata.json /tmp/.metabase/databases
 ```
 
-The **Validate** GitHub workflow regenerates the bundled examples on every push and fails if they drift from what's checked in.
+### Scripts
+
+- `bun run build` — compile TypeScript to `dist/` and bundle the spec.
+- `bun run type-check` — `tsc --noEmit`.
+- `bun run lint-eslint` — ESLint with no warnings allowed.
+- `bun run lint-format` — oxfmt format check.
+- `bun run test` — bun test suite.
+
+The **Lint**, **Test**, and **Validate** GitHub workflows run on every push and pull request. **Validate** regenerates the bundled examples and fails if they drift from what's checked in.
