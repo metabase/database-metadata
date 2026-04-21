@@ -4,6 +4,11 @@ export {
   type ExtractMetadataResult,
 } from "./extract-metadata.js";
 export {
+  extractFieldValues,
+  type ExtractFieldValuesOptions,
+  type ExtractFieldValuesResult,
+} from "./extract-field-values.js";
+export {
   extractSpec,
   type ExtractSpecOptions,
   type ExtractSpecResult,

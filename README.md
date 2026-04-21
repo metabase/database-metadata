@@ -6,7 +6,7 @@ This repository contains the specification, examples, and a CLI that converts th
 
 ## Specification
 
-The format is defined in **[core-spec/v1/spec.md](core-spec/v1/spec.md)** (v1.0.0). It covers entity keys, field types, folder structure, and the shape of each entity.
+The format is defined in **[core-spec/v1/spec.md](core-spec/v1/spec.md)** (v1.1.0). It covers entity keys, field types, folder structure, sampled field values, and the shape of each entity.
 
 Reference output for the Sample Database lives in **[examples/v1/](examples/v1/)** — both the raw `metadata.json` returned by the endpoint and the extracted YAML tree.
 
@@ -40,6 +40,24 @@ bunx @metabase/database-metadata extract-metadata <input-file> <output-folder>
 
 - `<input-file>` — path to the `metadata.json` produced by the API.
 - `<output-folder>` — destination directory. Database folders are created directly under it.
+
+### Extracting field values
+
+Metabase keeps a sampled list of distinct values for each field that's low-cardinality enough to enumerate (the same list that powers filter dropdowns in the UI). Fetch it and extract it alongside the metadata:
+
+```sh
+curl "$METABASE_URL/api/database/field-values" \
+  -H "X-API-Key: $METABASE_API_KEY" \
+  -o field-values.json
+
+bunx @metabase/database-metadata extract-field-values <metadata-file> <field-values-file> <output-folder>
+```
+
+- `<metadata-file>` — the same `metadata.json` used by `extract-metadata`. Field values reference fields by numeric ID, which the CLI resolves to natural keys using the metadata.
+- `<field-values-file>` — path to the `field-values.json` returned by the endpoint.
+- `<output-folder>` — destination directory; typically the same one used for `extract-metadata`, so values files land next to the table YAMLs they belong to.
+
+One YAML file is written per field that has values. Fields with empty samples are skipped; field IDs not present in the metadata are reported as orphans and skipped. See the spec's [Field Values](core-spec/v1/spec.md#field-values) section for the on-disk shape and when agents should consult these files.
 
 ### Extracting the spec
 
@@ -104,11 +122,16 @@ curl -sf "$METABASE_URL/api/database/metadata" \
   -H "X-API-Key: $METABASE_API_KEY" \
   -o .metabase/metadata.json
 
+curl -sf "$METABASE_URL/api/database/field-values" \
+  -H "X-API-Key: $METABASE_API_KEY" \
+  -o .metabase/field-values.json
+
 rm -rf .metabase/databases
 bunx @metabase/database-metadata extract-metadata .metabase/metadata.json .metabase/databases
+bunx @metabase/database-metadata extract-field-values .metabase/metadata.json .metabase/field-values.json .metabase/databases
 ```
 
-After this, tools and agents should read the YAML tree under `.metabase/databases/` — not `metadata.json`, which exists only as input to the extractor.
+After this, tools and agents should read the YAML tree under `.metabase/databases/` — not `metadata.json` or `field-values.json`, which exist only as input to the extractors.
 
 ## Publishing to NPM
 

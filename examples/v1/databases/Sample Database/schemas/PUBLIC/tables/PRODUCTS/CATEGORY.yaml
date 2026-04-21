@@ -1,0 +1,11 @@
+field_id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  - CATEGORY
+has_more_values: false
+values:
+  - Doohickey
+  - Gadget
+  - Gizmo
+  - Widget

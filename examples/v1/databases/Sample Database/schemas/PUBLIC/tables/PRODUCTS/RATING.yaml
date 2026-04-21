@@ -1,0 +1,19 @@
+field_id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  - RATING
+has_more_values: false
+values:
+  - value: 0
+    label: Unrated
+  - value: 1
+    label: Poor
+  - value: 2
+    label: Fair
+  - value: 3
+    label: Good
+  - value: 4
+    label: Great
+  - value: 5
+    label: Excellent
