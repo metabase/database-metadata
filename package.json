@@ -1,6 +1,6 @@
 {
   "name": "@metabase/database-metadata",
-  "version": "1.1.0",
+  "version": "1.0.3",
   "description": "CLI tool to extract Metabase database metadata into YAML files",
   "license": "SEE LICENSE IN LICENSE.txt",
   "repository": {
