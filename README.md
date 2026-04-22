@@ -6,7 +6,7 @@ This repository contains the specification, examples, and a CLI that converts th
 
 ## Specification
 
-The format is defined in **[core-spec/v1/spec.md](core-spec/v1/spec.md)** (v1.1.0). It covers entity keys, field types, folder structure, sampled field values, and the shape of each entity.
+The format is defined in **[core-spec/v1/spec.md](core-spec/v1/spec.md)** (v1.0.3). It covers entity keys, field types, folder structure, sampled field values, and the shape of each entity.
 
 Reference output for the Sample Database lives in **[examples/v1/](examples/v1/)** — both the raw `metadata.json` returned by the endpoint and the extracted YAML tree.
 
