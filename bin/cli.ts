@@ -23,7 +23,7 @@ type ParsedValues = {
   "api-key"?: string;
 };
 
-const DEFAULT_DOWNLOAD_PATHS = {
+const DEFAULT_PATHS = {
   metadata: ".metabase/metadata.json",
   fieldValues: ".metabase/field-values.json",
   extract: ".metabase/databases",
@@ -44,10 +44,11 @@ Commands:
   extract-spec                                    Copy the bundled spec.md into a target file
     --file <path>      Destination file (default: ./spec.md)
 
-  upload-metadata <metadata-file> <instance-url>
-                                                  Stream metadata (and optional field values)
-                                                  to a target Metabase instance via NDJSON.
-    --field-values <path>   Optional field-values JSON file to upload after metadata
+  upload-metadata <instance-url>                  Stream metadata + field values to a target
+                                                  Metabase instance via NDJSON.
+    --metadata <path>       Override metadata.json path (default: .metabase/metadata.json)
+    --field-values <path>   Override field-values.json path (default: .metabase/field-values.json)
+    --no-field-values       Skip uploading field values
     --api-key <key>         API key. Defaults to METABASE_API_KEY env var.
 
   download-metadata <instance-url>                Stream metadata + field values from a
@@ -124,13 +125,10 @@ async function handleUploadMetadata(
   positionals: string[],
   values: ParsedValues,
 ): Promise<void> {
-  const metadataFile = positionals[1];
-  const instanceUrl = positionals[2];
+  const instanceUrl = positionals[1];
 
-  if (!metadataFile || !instanceUrl) {
-    console.error(
-      "Error: <metadata-file> and <instance-url> arguments are required",
-    );
+  if (!instanceUrl) {
+    console.error("Error: <instance-url> argument is required");
     process.exit(1);
   }
 
@@ -142,7 +140,11 @@ async function handleUploadMetadata(
     process.exit(1);
   }
 
-  const fieldValuesFile = values["field-values"];
+  const metadataFile = values.metadata ?? DEFAULT_PATHS.metadata;
+  const fieldValuesFile = values["no-field-values"]
+    ? undefined
+    : (values["field-values"] ?? DEFAULT_PATHS.fieldValues);
+
   const stats = await uploadMetadata({
     metadataFile,
     fieldValuesFile,
@@ -197,13 +199,13 @@ async function handleDownloadMetadata(
     process.exit(1);
   }
 
-  const metadataFile = values.metadata ?? DEFAULT_DOWNLOAD_PATHS.metadata;
+  const metadataFile = values.metadata ?? DEFAULT_PATHS.metadata;
   const fieldValuesFile = values["no-field-values"]
     ? undefined
-    : (values["field-values"] ?? DEFAULT_DOWNLOAD_PATHS.fieldValues);
+    : (values["field-values"] ?? DEFAULT_PATHS.fieldValues);
   const extractFolder = values["no-extract"]
     ? undefined
-    : (values.extract ?? DEFAULT_DOWNLOAD_PATHS.extract);
+    : (values.extract ?? DEFAULT_PATHS.extract);
 
   const result = await downloadMetadata({
     instanceUrl,
