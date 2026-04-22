@@ -1,6 +1,3 @@
-import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
-
 import { postNdjson } from "./ndjson.js";
 import { streamJsonElements } from "./stream-json.js";
 
@@ -25,8 +22,6 @@ export type UploadMetadataOptions = {
   instanceUrl: string;
   apiKey: string;
   onWarning?: (message: string) => void;
-  /** When set, dumps every outgoing NDJSON line to `<folder>/<endpoint>.ndjson` for debugging. */
-  requestDumpFolder?: string;
 };
 
 export type UploadStepStats = {
@@ -253,28 +248,8 @@ export async function uploadMetadata({
   instanceUrl,
   apiKey,
   onWarning,
-  requestDumpFolder,
 }: UploadMetadataOptions): Promise<UploadMetadataResult> {
   const warn = onWarning ?? ((message: string) => console.warn(message));
-
-  if (requestDumpFolder !== undefined) {
-    mkdirSync(requestDumpFolder, { recursive: true });
-  }
-
-  const dumpFor = (
-    endpoint: "databases" | "tables" | "fields" | "fields-finalize" | "field-values",
-  ): ((line: string) => void) | undefined => {
-    if (requestDumpFolder === undefined) {
-      return undefined;
-    }
-    const file = join(requestDumpFolder, `${endpoint}.ndjson`);
-    // Truncate on first call so each run starts fresh — avoids cross-run noise
-    // when bisecting a malformed line.
-    writeFileSync(file, "");
-    return (line: string) => {
-      appendFileSync(file, line + "\n");
-    };
-  };
 
   const databaseIdMap = new Map<number, number>();
   const tableIdMap = new Map<number, number>();
@@ -392,7 +367,6 @@ export async function uploadMetadata({
     apiKey,
     requests: streamDatabaseRequests(),
     onWarning: warn,
-    onRequestSent: dumpFor("databases"),
     onResponse: (response, responseIndex) =>
       recordIdMapResponse({
         response,
@@ -407,7 +381,6 @@ export async function uploadMetadata({
     url: joinUrl(instanceUrl, API_PATHS.tables),
     apiKey,
     onWarning: warn,
-    onRequestSent: dumpFor("tables"),
     requests: remapForeignKey<TableEntry, TableRequest>({
       jsonPath: JSON_PATHS.tables,
       sourceFile: metadataFile,
@@ -431,7 +404,6 @@ export async function uploadMetadata({
     url: joinUrl(instanceUrl, API_PATHS.fields),
     apiKey,
     onWarning: warn,
-    onRequestSent: dumpFor("fields"),
     requests: remapForeignKey<FieldEntry, FieldInsertRequest>({
       jsonPath: JSON_PATHS.fields,
       sourceFile: metadataFile,
@@ -462,7 +434,6 @@ export async function uploadMetadata({
     url: joinUrl(instanceUrl, API_PATHS.fieldsFinalize),
     apiKey,
     onWarning: warn,
-    onRequestSent: dumpFor("fields-finalize"),
     requests: fieldFinalizeRequests(),
     onResponse: (response, responseIndex) => {
       if ("ok" in response) {
@@ -479,7 +450,6 @@ export async function uploadMetadata({
         url: joinUrl(instanceUrl, API_PATHS.fieldValues),
         apiKey,
         onWarning: warn,
-        onRequestSent: dumpFor("field-values"),
         requests: remapForeignKey<FieldValuesEntry, FieldValuesRequest>({
           jsonPath: JSON_PATHS.fieldValues,
           sourceFile: fieldValuesFile,

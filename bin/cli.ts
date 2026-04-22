@@ -21,7 +21,6 @@ type ParsedValues = {
   "no-field-values"?: boolean;
   "no-extract"?: boolean;
   "api-key"?: string;
-  "debug-dump"?: string;
 };
 
 const DEFAULT_PATHS = {
@@ -51,8 +50,6 @@ Commands:
     --field-values <path>   Override field-values.json path (default: .metabase/field-values.json)
     --no-field-values       Skip uploading field values
     --api-key <key>         API key. Defaults to METABASE_API_KEY env var.
-    --debug-dump <folder>   Write every outgoing NDJSON line to <folder>/<endpoint>.ndjson
-                            (useful for debugging malformed-json server errors).
 
   download-metadata <instance-url>                Stream metadata + field values from a
                                                   Metabase instance into .metabase/ and
@@ -79,7 +76,6 @@ function parseArguments() {
       "no-field-values": { type: "boolean", default: false },
       "no-extract": { type: "boolean", default: false },
       "api-key": { type: "string" },
-      "debug-dump": { type: "string" },
     },
   });
 }
@@ -154,7 +150,6 @@ async function handleUploadMetadata(
     fieldValuesFile,
     instanceUrl,
     apiKey,
-    requestDumpFolder: values["debug-dump"],
   });
   console.log(formatUploadReport(stats, Boolean(fieldValuesFile)));
   process.exit(hasAnyErrors(stats) ? 1 : 0);

@@ -95,7 +95,9 @@ With no flags, it reads `.metabase/metadata.json` and `.metabase/field-values.js
 | `--no-field-values` | — | Skip uploading field values |
 | `--api-key <key>` | `METABASE_API_KEY` env var | API key |
 
-Exits non-zero if any step reports row-level errors so CI can catch partial imports. The command is designed to stream 5 GB+ files without loading them into memory.
+The source JSON files are streamed through `@streamparser/json-node` — they are never fully loaded into memory, so 100 GB+ exports upload fine. Rows are sent in batches of 2000 per HTTP POST (matching the server's per-transaction batch size) with HTTP keep-alive, so each request is one clean server-side transaction.
+
+Exits non-zero if any step reports row-level errors, or if the server acknowledges fewer rows than were sent in a batch (so CI can catch partial imports).
 
 ### Extracting the spec
 
