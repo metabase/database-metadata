@@ -6,7 +6,7 @@ This repository contains the specification, examples, and a CLI that converts th
 
 ## Specification
 
-The format is defined in **[core-spec/v1/spec.md](core-spec/v1/spec.md)** (v1.1.0). It covers entity keys, field types, folder structure, sampled field values, and the shape of each entity.
+The format is defined in **[core-spec/v1/spec.md](core-spec/v1/spec.md)** (v1.0.3). It covers entity keys, field types, folder structure, sampled field values, and the shape of each entity.
 
 Reference output for the Sample Database lives in **[examples/v1/](examples/v1/)** — both the raw `metadata.json` returned by the endpoint and the extracted YAML tree.
 
@@ -22,17 +22,39 @@ Reference output for the Sample Database lives in **[examples/v1/](examples/v1/)
 
 Metadata is fetched on demand from a running Metabase instance via `GET /api/database/metadata`. The response is a flat JSON document with three arrays — `databases`, `tables`, and `fields` — streamed so that even warehouses with very large schemas can be exported without exhausting server memory.
 
-Authenticate with either a session token (`X-Metabase-Session`) or an API key (`X-API-Key`):
+Authenticate with an API key (`X-API-Key`) or session token (`X-Metabase-Session`).
+
+### Downloading metadata
+
+The CLI can fetch `metadata.json`, `field-values.json`, and extract the YAML tree in one streaming pass:
 
 ```sh
-curl "$METABASE_URL/api/database/metadata" \
-  -H "X-API-Key: $METABASE_API_KEY" \
-  -o metadata.json
+export METABASE_API_KEY=...
+bunx @metabase/database-metadata download-metadata "$METABASE_URL"
 ```
+
+With no flags, the command writes:
+
+- `.metabase/metadata.json`
+- `.metabase/field-values.json`
+- `.metabase/databases/` — extracted YAML tree
+
+Flags override any default or opt out of individual steps:
+
+| Flag | Default | Purpose |
+|------|---------|---------|
+| `--metadata <path>` | `.metabase/metadata.json` | Where to write the raw metadata JSON |
+| `--field-values <path>` | `.metabase/field-values.json` | Where to write the raw field-values JSON |
+| `--extract <folder>` | `.metabase/databases` | Where to extract the YAML tree |
+| `--no-field-values` | — | Skip downloading field values |
+| `--no-extract` | — | Skip YAML extraction |
+| `--api-key <key>` | `METABASE_API_KEY` env var | API key |
+
+Files are streamed to disk directly — responses are never fully buffered in memory, so multi-GB exports stay lean.
 
 ### Extracting metadata to YAML
 
-The CLI turns that JSON into the human- and agent-friendly YAML tree described in the spec:
+If you already have a `metadata.json` on disk (e.g. downloaded via `curl`), you can skip the download and extract directly:
 
 ```sh
 bunx @metabase/database-metadata extract-metadata <input-file> <output-folder>
@@ -43,13 +65,9 @@ bunx @metabase/database-metadata extract-metadata <input-file> <output-folder>
 
 ### Extracting field values
 
-Metabase keeps a sampled list of distinct values for each field that's low-cardinality enough to enumerate (the same list that powers filter dropdowns in the UI). Fetch it and extract it alongside the metadata:
+Metabase keeps a sampled list of distinct values for each field that's low-cardinality enough to enumerate (the same list that powers filter dropdowns in the UI).
 
 ```sh
-curl "$METABASE_URL/api/database/field-values" \
-  -H "X-API-Key: $METABASE_API_KEY" \
-  -o field-values.json
-
 bunx @metabase/database-metadata extract-field-values <metadata-file> <field-values-file> <output-folder>
 ```
 
@@ -58,6 +76,28 @@ bunx @metabase/database-metadata extract-field-values <metadata-file> <field-val
 - `<output-folder>` — destination directory; typically the same one used for `extract-metadata`, so values files land next to the table YAMLs they belong to.
 
 One YAML file is written per field that has values. Fields with empty samples are skipped; field IDs not present in the metadata are reported as orphans and skipped. See the spec's [Field Values](core-spec/v1/spec.md#field-values) section for the on-disk shape and when agents should consult these files.
+
+### Uploading metadata to a target instance
+
+`upload-metadata` streams the JSON files previously written by `download-metadata` into a target Metabase instance, remapping numeric IDs across multiple NDJSON passes (see [metabase-api-contract.md](metabase-api-contract.md)):
+
+```sh
+export METABASE_API_KEY=...
+bunx @metabase/database-metadata upload-metadata "$TARGET_METABASE_URL"
+```
+
+With no flags, it reads `.metabase/metadata.json` and `.metabase/field-values.json` — the same layout `download-metadata` writes by default.
+
+| Flag | Default | Purpose |
+|------|---------|---------|
+| `--metadata <path>` | `.metabase/metadata.json` | Path to the metadata JSON to upload |
+| `--field-values <path>` | `.metabase/field-values.json` | Path to the field-values JSON |
+| `--no-field-values` | — | Skip uploading field values |
+| `--api-key <key>` | `METABASE_API_KEY` env var | API key |
+
+The source JSON files are streamed through `@streamparser/json-node` — they are never fully loaded into memory, so 100 GB+ exports upload fine. Rows are sent in batches of 2000 per HTTP POST (matching the server's per-transaction batch size) with HTTP keep-alive, so each request is one clean server-side transaction.
+
+Exits non-zero if any step reports row-level errors, or if the server acknowledges fewer rows than were sent in a batch (so CI can catch partial imports).
 
 ### Extracting the spec
 
@@ -112,24 +152,16 @@ cp .env.template .env
 
 ### 4. Fetch and extract on demand
 
-With `.env` populated, the end-to-end flow is:
+With `.env` populated, the end-to-end flow is a single command:
 
 ```sh
 set -a; source .env; set +a
 
-mkdir -p .metabase
-curl -sf "$METABASE_URL/api/database/metadata" \
-  -H "X-API-Key: $METABASE_API_KEY" \
-  -o .metabase/metadata.json
-
-curl -sf "$METABASE_URL/api/database/field-values" \
-  -H "X-API-Key: $METABASE_API_KEY" \
-  -o .metabase/field-values.json
-
 rm -rf .metabase/databases
-bunx @metabase/database-metadata extract-metadata .metabase/metadata.json .metabase/databases
-bunx @metabase/database-metadata extract-field-values .metabase/metadata.json .metabase/field-values.json .metabase/databases
+bunx @metabase/database-metadata download-metadata "$METABASE_URL"
 ```
+
+That downloads `.metabase/metadata.json`, `.metabase/field-values.json`, and extracts the YAML tree into `.metabase/databases/`. Use `--no-field-values` or `--no-extract` to skip parts of the pipeline.
 
 After this, tools and agents should read the YAML tree under `.metabase/databases/` — not `metadata.json` or `field-values.json`, which exist only as input to the extractors.
 

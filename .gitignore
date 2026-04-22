@@ -7,3 +7,5 @@ Desktop.ini
 node_modules/
 dist/
 *.tgz
+.metabase/
+upload.log
