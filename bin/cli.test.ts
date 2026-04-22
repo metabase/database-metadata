@@ -14,6 +14,8 @@ type RunResult = {
   exitCode: number;
 };
 
+type UploadLine = { id: number };
+
 function runCli(args: string[]): RunResult {
   const proc = Bun.spawnSync({
     cmd: ["bun", "run", CLI, ...args],
@@ -118,6 +120,100 @@ describe("cli", () => {
       expect(stderr).toContain(
         "<metadata-file>, <field-values-file>, and <output-folder> arguments are required",
       );
+    });
+  });
+
+  describe("upload-metadata", () => {
+    it("errors when arguments are missing", () => {
+      const { stderr, exitCode } = runCli(["upload-metadata"]);
+      expect(exitCode).toBe(1);
+      expect(stderr).toContain(
+        "<metadata-file> and <instance-url> arguments are required",
+      );
+    });
+
+    it("errors when no api key is set", () => {
+      const proc = Bun.spawnSync({
+        cmd: [
+          "bun",
+          "run",
+          CLI,
+          "upload-metadata",
+          EXAMPLE_INPUT,
+          "http://127.0.0.1:1",
+        ],
+        cwd: REPO_ROOT,
+        env: { ...process.env, METABASE_API_KEY: "" },
+      });
+      expect(proc.exitCode).toBe(1);
+      expect(proc.stderr.toString()).toContain("API key is required");
+    });
+
+    it("uploads against a mock server end-to-end", async () => {
+
+      const server = Bun.serve({
+        port: 0,
+        async fetch(request) {
+          const url = new URL(request.url);
+          const body = await request.text();
+          const inLines = body
+            .split("\n")
+            .map((line) => line.trim())
+            .filter((line) => line.length > 0);
+
+          let response = "";
+          switch (url.pathname) {
+            case "/api/database/metadata/databases":
+            case "/api/database/metadata/tables":
+            case "/api/database/metadata/fields":
+              for (const line of inLines) {
+                const { id } = JSON.parse(line) as UploadLine;
+                response += JSON.stringify({ old_id: id, new_id: id }) + "\n";
+              }
+              break;
+            case "/api/database/metadata/fields/finalize":
+              for (const line of inLines) {
+                const { id } = JSON.parse(line) as UploadLine;
+                response += JSON.stringify({ id, ok: true }) + "\n";
+              }
+              break;
+            default:
+              return new Response("not found", { status: 404 });
+          }
+          return new Response(response, {
+            headers: { "Content-Type": "application/x-ndjson" },
+          });
+        },
+      });
+      try {
+        // NB: must use async Bun.spawn — spawnSync would block the parent
+        // event loop and deadlock with the in-process mock server.
+        const proc = Bun.spawn({
+          cmd: [
+            "bun",
+            "run",
+            CLI,
+            "upload-metadata",
+            EXAMPLE_INPUT,
+            `http://127.0.0.1:${server.port}`,
+          ],
+          cwd: REPO_ROOT,
+          env: { ...process.env, METABASE_API_KEY: "ci-key" },
+          stdout: "pipe",
+          stderr: "pipe",
+        });
+        const [stdoutText, stderrText, exitCode] = await Promise.all([
+          new Response(proc.stdout).text(),
+          new Response(proc.stderr).text(),
+          proc.exited,
+        ]);
+        expect(exitCode).toBe(0);
+        expect(stdoutText).toContain("Databases:");
+        expect(stdoutText).toContain("Finalized:");
+        expect(stderrText).toBe("");
+      } finally {
+        await server.stop();
+      }
     });
   });
 

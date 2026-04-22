@@ -13,3 +13,9 @@ export {
   type ExtractSpecOptions,
   type ExtractSpecResult,
 } from "./extract-spec.js";
+export {
+  uploadMetadata,
+  type UploadMetadataOptions,
+  type UploadMetadataResult,
+  type UploadStepStats,
+} from "./upload-metadata.js";
