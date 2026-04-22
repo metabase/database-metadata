@@ -1,6 +1,6 @@
 # Metabase Database Metadata Format
 
-**Version:** 1.0.0
+**Version:** 1.1.0
 
 ## Overview
 
@@ -18,6 +18,7 @@ The raw API response (`metadata.json`) is a single flat JSON document with `data
 4. [Database](#database)
 5. [Table](#table)
 6. [Field](#field)
+7. [Field Values](#field-values)
 
 ---
 
@@ -132,9 +133,13 @@ By convention, metadata is extracted under a `.metabase/databases/` directory, w
         ├── schemas/
         │   └── {schema}/
         │       └── tables/
-        │           └── {table}.yaml
+        │           ├── {table}.yaml
+        │           └── {table}/            # Optional: one YAML per field
+        │               └── {field}.yaml    #           that has sampled values
         └── tables/                         # Schemaless databases
-            └── {table}.yaml
+            ├── {table}.yaml
+            └── {table}/
+                └── {field}.yaml
 ```
 
 ### Path Construction Rules
@@ -252,3 +257,102 @@ parent_id:
   - DATA
   - user
 ```
+
+---
+
+## Field Values
+
+A `Field Values` entry records the **sampled distinct values** Metabase keeps for a single field. These power filter dropdowns in the Metabase UI and give agents a concrete sense of a column's domain — what values actually appear in the data, and what human-readable labels (if any) are associated with them.
+
+Field values are **sampled, not exhaustive**: Metabase caps the list (typically at ~1000 distinct values), and fields above that cap, or fields whose type doesn't lend itself to enumeration (long text, high-cardinality numerics), will not have a values file at all. Agents should treat a field values file as evidence that *these* values exist, not as a ground-truth enumeration of *all* values in the column.
+
+### Extraction order
+
+**Field values must be extracted *after* metadata, never before or in isolation.** The raw `field-values.json` references fields by numeric `field_id` only; resolving those IDs to the natural-key tuples used everywhere in this format requires the metadata index. The extractor takes both `metadata.json` and `field-values.json` as inputs, and the two **must come from the same Metabase instance at the same point in time** — a stale metadata file paired with a fresh values file (or vice versa) will silently drop entries as orphans whenever a field has been added, removed, or had its ID reassigned.
+
+The recommended workflow is therefore strictly sequential:
+
+1. Fetch `metadata.json` from the Metabase instance.
+2. Run `extract-metadata` to write the database/table/field YAML tree.
+3. Fetch `field-values.json` from the **same** instance, ideally back-to-back with step 1.
+4. Run `extract-field-values` against the same output folder to drop per-field values files into the existing tree.
+
+Agents reading the tree can rely on this ordering: any `{table}/{field}.yaml` file is guaranteed to have a corresponding entry in the parent `{table}.yaml`'s `fields` array.
+
+### When to consult field values
+
+- Filtering by a categorical, enum-like, or low-cardinality column — the values file tells you the vocabulary you can filter against.
+- Checking whether a particular value appears in a field.
+- Showing example values or options to users.
+- Distinguishing between display labels and stored values (e.g., a numeric `RATING` column stored as `0-5` but displayed as `Unrated`, `Poor`, …, `Excellent`).
+
+### Folder layout
+
+Field values live one directory down from the table YAML, in a folder named after the table:
+
+```
+schemas/{schema}/tables/
+├── {table}.yaml
+└── {table}/
+    └── {field}.yaml
+```
+
+For schemaless databases, the same pattern applies directly under `tables/`.
+
+**Absence is meaningful:** if a table has no `{table}/` folder, or a field has no `{field}.yaml`, then no sampled values are available for that entity. This is not an error — it's the default for high-cardinality or non-enumerable fields.
+
+### Filename rule
+
+The field filename is the field's name directly (e.g., `STATUS.yaml`). For nested JSON-unfolded fields, the path is joined with `.`:
+
+```
+tables/EVENTS/
+└── DATA.user.name.yaml         # represents DATA → user → name
+```
+
+Literal dots inside a field segment are escaped as `__DOT__` so the join remains unambiguous.
+
+### Schema
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `field_id` | array | Yes | Field FK (natural-key tuple, same form as in the enclosing table YAML) |
+| `has_more_values` | boolean | Yes | `true` when Metabase truncated the list at its internal cap; the file contains a representative sample, not the full domain |
+| `values` | array | Yes | Sampled distinct values. Two encodings — see below |
+
+#### `values` encoding
+
+When no human-readable labels exist, values are bare scalars:
+
+```yaml
+field_id:
+  - Sample Database
+  - PUBLIC
+  - PEOPLE
+  - STATE
+has_more_values: false
+values:
+  - AK
+  - AL
+  - AR
+```
+
+When a field has display labels (typically a remapped FK or an enum with friendly names), each entry is a `{value, label}` object:
+
+```yaml
+field_id:
+  - Sample Database
+  - PUBLIC
+  - PRODUCTS
+  - RATING
+has_more_values: false
+values:
+  - value: 0
+    label: Unrated
+  - value: 1
+    label: Poor
+  - value: 5
+    label: Excellent
+```
+
+The two encodings are mutually exclusive per file; a single YAML never mixes scalar and object entries.

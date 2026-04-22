@@ -1,0 +1,12 @@
+field_id:
+  - Sample Database
+  - PUBLIC
+  - PEOPLE
+  - SOURCE
+has_more_values: false
+values:
+  - Affiliate
+  - Facebook
+  - Google
+  - Organic
+  - Twitter

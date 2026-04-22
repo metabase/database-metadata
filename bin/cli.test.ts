@@ -6,6 +6,7 @@ import { join, resolve } from "path";
 const REPO_ROOT = resolve(import.meta.dirname, "..");
 const CLI = "bin/cli.ts";
 const EXAMPLE_INPUT = "examples/v1/metadata.json";
+const EXAMPLE_FIELD_VALUES = "examples/v1/field-values.json";
 
 type RunResult = {
   stdout: string;
@@ -75,7 +76,47 @@ describe("cli", () => {
       const { stderr, exitCode } = runCli(["extract-metadata"]);
       expect(exitCode).toBe(1);
       expect(stderr).toContain(
-        "both <input-file> and <output-folder> arguments are required",
+        "<input-file> and <output-folder> arguments are required",
+      );
+    });
+  });
+
+  describe("extract-field-values", () => {
+    let workdir: string;
+
+    beforeEach(() => {
+      workdir = mkdtempSync(join(tmpdir(), "database-metadata-values-cli-"));
+    });
+
+    afterEach(() => {
+      rmSync(workdir, { recursive: true, force: true });
+    });
+
+    it("extracts the bundled example field values", () => {
+      const { stdout, exitCode } = runCli([
+        "extract-field-values",
+        EXAMPLE_INPUT,
+        EXAMPLE_FIELD_VALUES,
+        workdir,
+      ]);
+      expect(exitCode).toBe(0);
+      expect(stdout).toContain("Extracted values for 4 fields");
+
+      const statePath = join(
+        workdir,
+        "Sample Database/schemas/PUBLIC/tables/PEOPLE/STATE.yaml",
+      );
+      expect(existsSync(statePath)).toBe(true);
+    });
+
+    it("errors when arguments are missing", () => {
+      const { stderr, exitCode } = runCli([
+        "extract-field-values",
+        EXAMPLE_INPUT,
+      ]);
+      expect(exitCode).toBe(1);
+      expect(stderr).toContain(
+        "<metadata-file>, <field-values-file>, and <output-folder> arguments are required",
       );
     });
   });
