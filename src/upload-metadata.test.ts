@@ -192,7 +192,7 @@ describe("uploadMetadata", () => {
     expect(stats).toEqual({
       databases: { mapped: 1, errors: 0 },
       tables: { mapped: 8, errors: 0 },
-      fieldsInsert: { mapped: 71, errors: 0 },
+      fieldsInsert: { mapped: 71, errors: 0, inserted: 71, matched: 0 },
       fieldsFinalize: { mapped: 71, errors: 0 },
       fieldValues: { mapped: 4, errors: 0 },
     });
@@ -288,6 +288,8 @@ describe("uploadMetadata", () => {
     });
 
     expect(stats.fieldsInsert.mapped).toBe(71);
+    expect(stats.fieldsInsert.inserted).toBe(0);
+    expect(stats.fieldsInsert.matched).toBe(71);
     expect(stats.fieldsFinalize.mapped).toBe(0);
     expect(stats.fieldsFinalize.errors).toBe(0);
   });

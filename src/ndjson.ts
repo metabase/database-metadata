@@ -3,20 +3,31 @@ export type PostNdjsonOptions<Req, Res> = {
   apiKey: string;
   requests: AsyncIterable<Req>;
   onResponse: (response: Res, index: number) => void | Promise<void>;
+  onWarning?: (message: string) => void;
 };
 
 // Node's fetch RequestInit does not type `duplex` in lib.dom, but it is required
 // when sending a streaming body.
 type StreamingRequestInit = RequestInit & { duplex: "half" };
 
+// The server (Clojure line-seq) splits requests on raw \n, \r, or \r\n. If any
+// of those bytes escape into a serialized line, it gets cut mid-object and
+// returns a malformed-json error against the tail fragment. `JSON.stringify`
+// escapes control chars in strings, so a positive hit here means a value's
+// toJSON() produced raw control chars — we sanitize defensively and warn so
+// the user can chase the upstream bug.
+const RAW_NEWLINE_PATTERN = /[\n\r]/g;
+
 export async function postNdjson<Req, Res>({
   url,
   apiKey,
   requests,
   onResponse,
+  onWarning,
 }: PostNdjsonOptions<Req, Res>): Promise<void> {
   const iterator = requests[Symbol.asyncIterator]();
   const encoder = new TextEncoder();
+  let sentIndex = 0;
 
   const body = new ReadableStream<Uint8Array>({
     async pull(controller) {
@@ -26,7 +37,12 @@ export async function postNdjson<Req, Res>({
           controller.close();
           return;
         }
-        controller.enqueue(encoder.encode(JSON.stringify(value) + "\n"));
+        const raw = JSON.stringify(value);
+        const safe = raw.includes("\n") || raw.includes("\r")
+          ? sanitizeRawNewlines(raw, sentIndex, onWarning)
+          : raw;
+        sentIndex += 1;
+        controller.enqueue(encoder.encode(safe + "\n"));
       } catch (error) {
         controller.error(error);
       }
@@ -101,6 +117,24 @@ export async function* parseNdjsonStream<T>(
   if (trailing.length > 0) {
     yield JSON.parse(trailing) as T;
   }
+}
+
+function sanitizeRawNewlines(
+  raw: string,
+  index: number,
+  onWarning?: (message: string) => void,
+): string {
+  const firstOffset = raw.search(RAW_NEWLINE_PATTERN);
+  const context = raw.slice(
+    Math.max(0, firstOffset - 40),
+    Math.min(raw.length, firstOffset + 40),
+  );
+  onWarning?.(
+    `Request #${index} had a raw \\n or \\r in its serialized JSON (first at offset ${firstOffset}); sanitizing. Context: …${context}…`,
+  );
+  return raw.replace(RAW_NEWLINE_PATTERN, (char) =>
+    char === "\n" ? "\\n" : "\\r",
+  );
 }
 
 function* splitLines(block: string): Generator<string> {

@@ -160,6 +160,22 @@ function formatStepLine(label: string, step: UploadStepStats): string {
   return `${label}  ${step.mapped}/${total} mapped (${step.errors} errors)`;
 }
 
+function formatFieldsLine(stats: UploadMetadataResult["fieldsInsert"]): string {
+  const total = stats.mapped + stats.errors;
+  return `Fields:     ${stats.mapped}/${total} mapped (${stats.inserted} inserted, ${stats.matched} matched, ${stats.errors} errors)`;
+}
+
+function formatFinalizeLine(
+  finalize: UploadStepStats,
+  insertedCount: number,
+): string {
+  const base = formatStepLine("Finalized: ", finalize);
+  if (insertedCount === 0 && finalize.errors === 0) {
+    return `${base} — no newly-inserted fields to finalize`;
+  }
+  return base;
+}
+
 function formatUploadReport(
   stats: UploadMetadataResult,
   fieldValuesRan: boolean,
@@ -167,8 +183,8 @@ function formatUploadReport(
   const lines = [
     formatStepLine("Databases: ", stats.databases),
     formatStepLine("Tables:    ", stats.tables),
-    formatStepLine("Fields:    ", stats.fieldsInsert),
-    formatStepLine("Finalized: ", stats.fieldsFinalize),
+    formatFieldsLine(stats.fieldsInsert),
+    formatFinalizeLine(stats.fieldsFinalize, stats.fieldsInsert.inserted),
   ];
   if (fieldValuesRan) {
     lines.push(formatStepLine("Values:    ", stats.fieldValues));

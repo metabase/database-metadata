@@ -29,10 +29,15 @@ export type UploadStepStats = {
   errors: number;
 };
 
+export type UploadFieldInsertStats = UploadStepStats & {
+  inserted: number;
+  matched: number;
+};
+
 export type UploadMetadataResult = {
   databases: UploadStepStats;
   tables: UploadStepStats;
-  fieldsInsert: UploadStepStats;
+  fieldsInsert: UploadFieldInsertStats;
   fieldsFinalize: UploadStepStats;
   fieldValues: UploadStepStats;
 };
@@ -48,7 +53,7 @@ type TableEntry = {
   db_id: number;
   name: string;
   schema: string | null;
-  description?: string;
+  description?: string | null;
 };
 
 type FieldEntry = {
@@ -65,14 +70,6 @@ type FieldEntry = {
   fk_target_field_id?: number | null;
 };
 
-type FieldInsertRequest = Omit<FieldEntry, "parent_id" | "fk_target_field_id">;
-
-type FieldFinalizeRequest = {
-  id: number;
-  parent_id: number | null;
-  fk_target_field_id: number | null;
-};
-
 type FieldValuesEntry = {
   field_id: number;
   values: unknown[];
@@ -80,19 +77,58 @@ type FieldValuesEntry = {
   human_readable_values?: string[];
 };
 
+type DatabaseRequest = {
+  id: number;
+  name: string;
+  engine: string;
+};
+
+type TableRequest = {
+  id: number;
+  db_id: number;
+  name: string;
+  schema: string | null;
+  description?: string | null;
+};
+
+type FieldInsertRequest = {
+  id: number;
+  table_id: number;
+  name: string;
+  base_type?: string;
+  database_type?: string;
+  description?: string | null;
+  semantic_type?: string | null;
+  effective_type?: string | null;
+  coercion_strategy?: string | null;
+};
+
+type FieldFinalizeRequest = {
+  id: number;
+  parent_id: number | null;
+  fk_target_field_id: number | null;
+};
+
+type FieldValuesRequest = {
+  field_id: number;
+  values: unknown[];
+  has_more_values: boolean;
+  human_readable_values?: string[];
+};
+
 type IdMapResponse =
   | { old_id: number; new_id: number }
   | { old_id: number; existing_id: number }
-  | { old_id: number; error: string; detail?: string };
+  | { old_id?: number; error: string; detail?: string };
 
 type FieldFinalizeResponse =
   | { id: number; ok: true }
-  | { id: number; error: string; detail?: string };
+  | { id?: number; error: string; detail?: string };
 
 type FieldValuesResponse =
   | { field_id: number; created: true }
   | { field_id: number; updated: true }
-  | { field_id: number; error: string; detail?: string };
+  | { field_id?: number; error: string; detail?: string };
 
 type RecordIdMapResponseOptions = {
   response: IdMapResponse;
@@ -100,6 +136,7 @@ type RecordIdMapResponseOptions = {
   idMap: Map<number, number>;
   label: string;
   onInserted?: (oldId: number) => void;
+  onMatched?: (oldId: number) => void;
 };
 
 function joinUrl(baseUrl: string, path: string): string {
@@ -110,13 +147,80 @@ function emptyStats(): UploadStepStats {
   return { mapped: 0, errors: 0 };
 }
 
+function emptyFieldInsertStats(): UploadFieldInsertStats {
+  return { mapped: 0, errors: 0, inserted: 0, matched: 0 };
+}
+
 function formatError(
   label: string,
-  id: number,
+  id: number | undefined,
   response: { error?: string; detail?: string },
 ): string {
-  const suffix = response.detail ? ` — ${response.detail}` : "";
-  return `${label} ${id}: ${response.error}${suffix}`;
+  const idSuffix = id === undefined ? "" : ` ${id}`;
+  const detailSuffix = response.detail ? ` — ${response.detail}` : "";
+  return `${label}${idSuffix}: ${response.error ?? "unknown error"}${detailSuffix}`;
+}
+
+function pickDatabaseRequest(db: DatabaseEntry): DatabaseRequest {
+  return { id: db.id, name: db.name, engine: db.engine };
+}
+
+function pickTableRequest(table: TableEntry, dbId: number): TableRequest {
+  const request: TableRequest = {
+    id: table.id,
+    db_id: dbId,
+    name: table.name,
+    schema: table.schema,
+  };
+  if (table.description !== undefined) {
+    request.description = table.description;
+  }
+  return request;
+}
+
+function pickFieldInsertRequest(
+  field: FieldEntry,
+  tableId: number,
+): FieldInsertRequest {
+  const request: FieldInsertRequest = {
+    id: field.id,
+    table_id: tableId,
+    name: field.name,
+  };
+  if (field.base_type !== undefined) {
+    request.base_type = field.base_type;
+  }
+  if (field.database_type !== undefined) {
+    request.database_type = field.database_type;
+  }
+  if (field.description !== undefined) {
+    request.description = field.description;
+  }
+  if (field.semantic_type !== undefined) {
+    request.semantic_type = field.semantic_type;
+  }
+  if (field.effective_type !== undefined) {
+    request.effective_type = field.effective_type;
+  }
+  if (field.coercion_strategy !== undefined) {
+    request.coercion_strategy = field.coercion_strategy;
+  }
+  return request;
+}
+
+function pickFieldValuesRequest(
+  entry: FieldValuesEntry,
+  fieldId: number,
+): FieldValuesRequest {
+  const request: FieldValuesRequest = {
+    field_id: fieldId,
+    values: entry.values,
+    has_more_values: entry.has_more_values ?? false,
+  };
+  if (entry.human_readable_values !== undefined) {
+    request.human_readable_values = entry.human_readable_values;
+  }
+  return request;
 }
 
 export async function uploadMetadata({
@@ -136,7 +240,7 @@ export async function uploadMetadata({
   const result: UploadMetadataResult = {
     databases: emptyStats(),
     tables: emptyStats(),
-    fieldsInsert: emptyStats(),
+    fieldsInsert: emptyFieldInsertStats(),
     fieldsFinalize: emptyStats(),
     fieldValues: emptyStats(),
   };
@@ -147,6 +251,7 @@ export async function uploadMetadata({
     idMap,
     label,
     onInserted,
+    onMatched,
   }: RecordIdMapResponseOptions): void {
     if ("new_id" in response) {
       idMap.set(response.old_id, response.new_id);
@@ -156,6 +261,7 @@ export async function uploadMetadata({
     }
     if ("existing_id" in response) {
       idMap.set(response.old_id, response.existing_id);
+      onMatched?.(response.old_id);
       stats.mapped += 1;
       return;
     }
@@ -227,13 +333,20 @@ export async function uploadMetadata({
     }
   }
 
-  await postNdjson<DatabaseEntry, IdMapResponse>({
-    url: joinUrl(instanceUrl, API_PATHS.databases),
-    apiKey,
-    requests: streamJsonElements<DatabaseEntry>(
+  async function* streamDatabaseRequests(): AsyncGenerator<DatabaseRequest> {
+    for await (const database of streamJsonElements<DatabaseEntry>(
       metadataFile,
       JSON_PATHS.databases,
-    ),
+    )) {
+      yield pickDatabaseRequest(database);
+    }
+  }
+
+  await postNdjson<DatabaseRequest, IdMapResponse>({
+    url: joinUrl(instanceUrl, API_PATHS.databases),
+    apiKey,
+    requests: streamDatabaseRequests(),
+    onWarning: warn,
     onResponse: (response) =>
       recordIdMapResponse({
         response,
@@ -243,15 +356,16 @@ export async function uploadMetadata({
       }),
   });
 
-  await postNdjson<TableEntry, IdMapResponse>({
+  await postNdjson<TableRequest, IdMapResponse>({
     url: joinUrl(instanceUrl, API_PATHS.tables),
     apiKey,
-    requests: remapForeignKey<TableEntry, TableEntry>({
+    onWarning: warn,
+    requests: remapForeignKey<TableEntry, TableRequest>({
       jsonPath: JSON_PATHS.tables,
       sourceFile: metadataFile,
       getKey: (table) => table.db_id,
       idMap: databaseIdMap,
-      transform: (table, newDbId) => ({ ...table, db_id: newDbId }),
+      transform: pickTableRequest,
       describeSkip: (table, oldDbId) =>
         `Skipping table ${table.id} (${table.name}): source db_id ${oldDbId} did not map to a target database`,
     }),
@@ -267,19 +381,13 @@ export async function uploadMetadata({
   await postNdjson<FieldInsertRequest, IdMapResponse>({
     url: joinUrl(instanceUrl, API_PATHS.fields),
     apiKey,
+    onWarning: warn,
     requests: remapForeignKey<FieldEntry, FieldInsertRequest>({
       jsonPath: JSON_PATHS.fields,
       sourceFile: metadataFile,
       getKey: (field) => field.table_id,
       idMap: tableIdMap,
-      transform: (field, newTableId) => {
-        const {
-          parent_id: _parent_id,
-          fk_target_field_id: _fk_target_field_id,
-          ...rest
-        } = field;
-        return { ...rest, table_id: newTableId };
-      },
+      transform: pickFieldInsertRequest,
       describeSkip: (field, oldTableId) =>
         `Skipping field ${field.id} (${field.name}): source table_id ${oldTableId} did not map to a target table`,
     }),
@@ -289,13 +397,20 @@ export async function uploadMetadata({
         stats: result.fieldsInsert,
         idMap: fieldIdMap,
         label: "Field",
-        onInserted: (oldId) => insertedFieldIds.add(oldId),
+        onInserted: (oldId) => {
+          insertedFieldIds.add(oldId);
+          result.fieldsInsert.inserted += 1;
+        },
+        onMatched: () => {
+          result.fieldsInsert.matched += 1;
+        },
       }),
   });
 
   const finalizePass = postNdjson<FieldFinalizeRequest, FieldFinalizeResponse>({
     url: joinUrl(instanceUrl, API_PATHS.fieldsFinalize),
     apiKey,
+    onWarning: warn,
     requests: fieldFinalizeRequests(),
     onResponse: (response) => {
       if ("ok" in response) {
@@ -308,18 +423,16 @@ export async function uploadMetadata({
   });
 
   const fieldValuesPass = fieldValuesFile
-    ? postNdjson<FieldValuesEntry, FieldValuesResponse>({
+    ? postNdjson<FieldValuesRequest, FieldValuesResponse>({
         url: joinUrl(instanceUrl, API_PATHS.fieldValues),
         apiKey,
-        requests: remapForeignKey<FieldValuesEntry, FieldValuesEntry>({
+        onWarning: warn,
+        requests: remapForeignKey<FieldValuesEntry, FieldValuesRequest>({
           jsonPath: JSON_PATHS.fieldValues,
           sourceFile: fieldValuesFile,
           getKey: (entry) => entry.field_id,
           idMap: fieldIdMap,
-          transform: (entry, newFieldId) => ({
-            ...entry,
-            field_id: newFieldId,
-          }),
+          transform: pickFieldValuesRequest,
           describeSkip: (entry, oldId) =>
             `Skipping field values for field_id ${oldId}: no mapping from source field to target`,
         }),
