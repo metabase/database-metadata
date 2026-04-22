@@ -19,3 +19,8 @@ export {
   type UploadMetadataResult,
   type UploadStepStats,
 } from "./upload-metadata.js";
+export {
+  downloadMetadata,
+  type DownloadMetadataOptions,
+  type DownloadMetadataResult,
+} from "./download-metadata.js";

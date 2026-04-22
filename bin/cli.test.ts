@@ -217,6 +217,157 @@ describe("cli", () => {
     });
   });
 
+  describe("download-metadata", () => {
+    let workdir: string;
+
+    beforeEach(() => {
+      workdir = mkdtempSync(join(tmpdir(), "download-metadata-cli-"));
+    });
+
+    afterEach(() => {
+      rmSync(workdir, { recursive: true, force: true });
+    });
+
+    it("errors when <instance-url> is missing", () => {
+      const { stderr, exitCode } = runCli(["download-metadata"]);
+      expect(exitCode).toBe(1);
+      expect(stderr).toContain("<instance-url>");
+    });
+
+    async function runDownloadCli(
+      serverPort: number,
+      extraArgs: string[],
+      cwd: string,
+    ): Promise<{ stdout: string; stderr: string; exitCode: number | null }> {
+      const proc = Bun.spawn({
+        cmd: [
+          "bun",
+          "run",
+          join(REPO_ROOT, CLI),
+          "download-metadata",
+          `http://127.0.0.1:${serverPort}`,
+          ...extraArgs,
+        ],
+        cwd,
+        env: { ...process.env, METABASE_API_KEY: "ci-key" },
+        stdout: "pipe",
+        stderr: "pipe",
+      });
+      const [stdout, stderr, exitCode] = await Promise.all([
+        new Response(proc.stdout).text(),
+        new Response(proc.stderr).text(),
+        proc.exited,
+      ]);
+      return { stdout, stderr, exitCode };
+    }
+
+    function startMockServer() {
+      const EXAMPLE_METADATA_PATH = join(REPO_ROOT, EXAMPLE_INPUT);
+      const EXAMPLE_VALUES_PATH = join(REPO_ROOT, EXAMPLE_FIELD_VALUES);
+      return Bun.serve({
+        port: 0,
+        fetch(request) {
+          const url = new URL(request.url);
+          if (url.pathname === "/api/database/metadata") {
+            return new Response(Bun.file(EXAMPLE_METADATA_PATH));
+          }
+          if (url.pathname === "/api/database/field-values") {
+            return new Response(Bun.file(EXAMPLE_VALUES_PATH));
+          }
+          return new Response("not found", { status: 404 });
+        },
+      });
+    }
+
+    it("defaults paths to .metabase/ when no flags are given", async () => {
+      const server = startMockServer();
+      try {
+        const { stdout, stderr, exitCode } = await runDownloadCli(
+          server.port,
+          [],
+          workdir,
+        );
+        expect(stderr).toBe("");
+        expect(exitCode).toBe(0);
+        expect(stdout).toContain(".metabase/metadata.json");
+        expect(stdout).toContain(".metabase/field-values.json");
+        expect(stdout).toContain(".metabase/databases");
+
+        expect(existsSync(join(workdir, ".metabase/metadata.json"))).toBe(true);
+        expect(existsSync(join(workdir, ".metabase/field-values.json"))).toBe(
+          true,
+        );
+        expect(
+          existsSync(
+            join(
+              workdir,
+              ".metabase/databases/Sample Database/schemas/PUBLIC/tables/ORDERS.yaml",
+            ),
+          ),
+        ).toBe(true);
+      } finally {
+        await server.stop();
+      }
+    });
+
+    it("honors --no-field-values and --no-extract", async () => {
+      const server = startMockServer();
+      try {
+        const { stderr, exitCode, stdout } = await runDownloadCli(
+          server.port,
+          ["--no-field-values", "--no-extract"],
+          workdir,
+        );
+        expect(stderr).toBe("");
+        expect(exitCode).toBe(0);
+        expect(stdout).not.toContain("Field values:");
+        expect(stdout).not.toContain("Extracted to:");
+        expect(existsSync(join(workdir, ".metabase/metadata.json"))).toBe(true);
+        expect(existsSync(join(workdir, ".metabase/field-values.json"))).toBe(
+          false,
+        );
+        expect(existsSync(join(workdir, ".metabase/databases"))).toBe(false);
+      } finally {
+        await server.stop();
+      }
+    });
+
+    it("overrides paths via flags", async () => {
+      const server = startMockServer();
+      try {
+        const metadataFile = join(workdir, "custom-metadata.json");
+        const fieldValuesFile = join(workdir, "custom-values.json");
+        const extractFolder = join(workdir, "custom-databases");
+        const { stderr, exitCode } = await runDownloadCli(
+          server.port,
+          [
+            "--metadata",
+            metadataFile,
+            "--field-values",
+            fieldValuesFile,
+            "--extract",
+            extractFolder,
+          ],
+          REPO_ROOT,
+        );
+        expect(stderr).toBe("");
+        expect(exitCode).toBe(0);
+        expect(existsSync(metadataFile)).toBe(true);
+        expect(existsSync(fieldValuesFile)).toBe(true);
+        expect(
+          existsSync(
+            join(
+              extractFolder,
+              "Sample Database/schemas/PUBLIC/tables/ORDERS.yaml",
+            ),
+          ),
+        ).toBe(true);
+      } finally {
+        await server.stop();
+      }
+    });
+  });
+
   describe("extract-spec", () => {
     let workdir: string;
 

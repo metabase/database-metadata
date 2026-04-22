@@ -2,6 +2,7 @@
 
 import { parseArgs } from "node:util";
 
+import { downloadMetadata } from "../src/download-metadata.js";
 import { extractFieldValues } from "../src/extract-field-values.js";
 import { extractMetadata } from "../src/extract-metadata.js";
 import { extractSpec } from "../src/extract-spec.js";
@@ -14,9 +15,19 @@ import {
 type ParsedValues = {
   file?: string;
   help?: boolean;
+  metadata?: string;
   "field-values"?: string;
+  extract?: string;
+  "no-field-values"?: boolean;
+  "no-extract"?: boolean;
   "api-key"?: string;
 };
+
+const DEFAULT_DOWNLOAD_PATHS = {
+  metadata: ".metabase/metadata.json",
+  fieldValues: ".metabase/field-values.json",
+  extract: ".metabase/databases",
+} as const;
 
 const HELP = `Usage: database-metadata <command> [arguments] [options]
 
@@ -39,6 +50,16 @@ Commands:
     --field-values <path>   Optional field-values JSON file to upload after metadata
     --api-key <key>         API key. Defaults to METABASE_API_KEY env var.
 
+  download-metadata <instance-url>                Stream metadata + field values from a
+                                                  Metabase instance into .metabase/ and
+                                                  extract the YAML tree by default.
+    --metadata <path>       Override metadata.json path (default: .metabase/metadata.json)
+    --field-values <path>   Override field-values.json path (default: .metabase/field-values.json)
+    --extract <folder>      Override YAML extract folder (default: .metabase/databases)
+    --no-field-values       Skip downloading field values
+    --no-extract            Skip YAML extraction
+    --api-key <key>         API key. Defaults to METABASE_API_KEY env var.
+
 Options:
   -h, --help           Show this help message`;
 
@@ -48,7 +69,11 @@ function parseArguments() {
     options: {
       file: { type: "string" },
       help: { type: "boolean", short: "h", default: false },
+      metadata: { type: "string" },
       "field-values": { type: "string" },
+      extract: { type: "string" },
+      "no-field-values": { type: "boolean", default: false },
+      "no-extract": { type: "boolean", default: false },
       "api-key": { type: "string" },
     },
   });
@@ -153,6 +178,51 @@ function hasAnyErrors(stats: UploadMetadataResult): boolean {
   return Object.values(stats).some((step) => step.errors > 0);
 }
 
+async function handleDownloadMetadata(
+  positionals: string[],
+  values: ParsedValues,
+): Promise<void> {
+  const instanceUrl = positionals[1];
+
+  if (!instanceUrl) {
+    console.error("Error: <instance-url> argument is required");
+    process.exit(1);
+  }
+
+  const apiKey = values["api-key"] ?? process.env.METABASE_API_KEY;
+  if (!apiKey) {
+    console.error(
+      "Error: API key is required (pass --api-key or set METABASE_API_KEY)",
+    );
+    process.exit(1);
+  }
+
+  const metadataFile = values.metadata ?? DEFAULT_DOWNLOAD_PATHS.metadata;
+  const fieldValuesFile = values["no-field-values"]
+    ? undefined
+    : (values["field-values"] ?? DEFAULT_DOWNLOAD_PATHS.fieldValues);
+  const extractFolder = values["no-extract"]
+    ? undefined
+    : (values.extract ?? DEFAULT_DOWNLOAD_PATHS.extract);
+
+  const result = await downloadMetadata({
+    instanceUrl,
+    apiKey,
+    metadataFile,
+    fieldValuesFile,
+    extractFolder,
+  });
+  const lines = [`Metadata:     ${result.metadataFile}`];
+  if (result.fieldValuesFile) {
+    lines.push(`Field values: ${result.fieldValuesFile}`);
+  }
+  if (result.extractFolder) {
+    lines.push(`Extracted to: ${result.extractFolder}`);
+  }
+  console.log(lines.join("\n"));
+  process.exit(0);
+}
+
 function handleExtractSpec(values: ParsedValues): void {
   const { target } = extractSpec({ file: values.file ?? "spec.md" });
   console.log(`Spec extracted to ${target}`);
@@ -177,6 +247,8 @@ async function main(): Promise<void> {
       return handleExtractSpec(values);
     case "upload-metadata":
       return handleUploadMetadata(positionals, values);
+    case "download-metadata":
+      return handleDownloadMetadata(positionals, values);
     default:
       console.error(`Unknown command: ${command}`);
       process.exit(1);
