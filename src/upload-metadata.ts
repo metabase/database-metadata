@@ -1,3 +1,6 @@
+import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { postNdjson } from "./ndjson.js";
 import { streamJsonElements } from "./stream-json.js";
 
@@ -22,6 +25,8 @@ export type UploadMetadataOptions = {
   instanceUrl: string;
   apiKey: string;
   onWarning?: (message: string) => void;
+  /** When set, dumps every outgoing NDJSON line to `<folder>/<endpoint>.ndjson` for debugging. */
+  requestDumpFolder?: string;
 };
 
 export type UploadStepStats = {
@@ -119,19 +124,20 @@ type FieldValuesRequest = {
 type IdMapResponse =
   | { old_id: number; new_id: number }
   | { old_id: number; existing_id: number }
-  | { old_id?: number; error: string; detail?: string };
+  | { old_id?: number; line?: number; error: string; detail?: string };
 
 type FieldFinalizeResponse =
   | { id: number; ok: true }
-  | { id?: number; error: string; detail?: string };
+  | { id?: number; line?: number; error: string; detail?: string };
 
 type FieldValuesResponse =
   | { field_id: number; created: true }
   | { field_id: number; updated: true }
-  | { field_id?: number; error: string; detail?: string };
+  | { field_id?: number; line?: number; error: string; detail?: string };
 
 type RecordIdMapResponseOptions = {
   response: IdMapResponse;
+  responseIndex: number;
   stats: UploadStepStats;
   idMap: Map<number, number>;
   label: string;
@@ -154,11 +160,29 @@ function emptyFieldInsertStats(): UploadFieldInsertStats {
 function formatError(
   label: string,
   id: number | undefined,
-  response: { error?: string; detail?: string },
+  response: { error?: string; detail?: string; line?: number },
+  requestIndex?: number,
 ): string {
-  const idSuffix = id === undefined ? "" : ` ${id}`;
+  const locator = buildErrorLocator(id, response.line, requestIndex);
   const detailSuffix = response.detail ? ` — ${response.detail}` : "";
-  return `${label}${idSuffix}: ${response.error ?? "unknown error"}${detailSuffix}`;
+  return `${label}${locator}: ${response.error ?? "unknown error"}${detailSuffix}`;
+}
+
+function buildErrorLocator(
+  id: number | undefined,
+  serverLine: number | undefined,
+  requestIndex: number | undefined,
+): string {
+  if (id !== undefined) {
+    return ` ${id}`;
+  }
+  if (serverLine !== undefined) {
+    return ` (source line #${serverLine})`;
+  }
+  if (requestIndex !== undefined) {
+    return ` (response #${requestIndex})`;
+  }
+  return "";
 }
 
 function pickDatabaseRequest(db: DatabaseEntry): DatabaseRequest {
@@ -229,8 +253,28 @@ export async function uploadMetadata({
   instanceUrl,
   apiKey,
   onWarning,
+  requestDumpFolder,
 }: UploadMetadataOptions): Promise<UploadMetadataResult> {
   const warn = onWarning ?? ((message: string) => console.warn(message));
+
+  if (requestDumpFolder !== undefined) {
+    mkdirSync(requestDumpFolder, { recursive: true });
+  }
+
+  const dumpFor = (
+    endpoint: "databases" | "tables" | "fields" | "fields-finalize" | "field-values",
+  ): ((line: string) => void) | undefined => {
+    if (requestDumpFolder === undefined) {
+      return undefined;
+    }
+    const file = join(requestDumpFolder, `${endpoint}.ndjson`);
+    // Truncate on first call so each run starts fresh — avoids cross-run noise
+    // when bisecting a malformed line.
+    writeFileSync(file, "");
+    return (line: string) => {
+      appendFileSync(file, line + "\n");
+    };
+  };
 
   const databaseIdMap = new Map<number, number>();
   const tableIdMap = new Map<number, number>();
@@ -247,6 +291,7 @@ export async function uploadMetadata({
 
   function recordIdMapResponse({
     response,
+    responseIndex,
     stats,
     idMap,
     label,
@@ -266,7 +311,7 @@ export async function uploadMetadata({
       return;
     }
     stats.errors += 1;
-    warn(formatError(label, response.old_id, response));
+    warn(formatError(label, response.old_id, response, responseIndex));
   }
 
   async function* remapForeignKey<In, Out>(opts: {
@@ -347,9 +392,11 @@ export async function uploadMetadata({
     apiKey,
     requests: streamDatabaseRequests(),
     onWarning: warn,
-    onResponse: (response) =>
+    onRequestSent: dumpFor("databases"),
+    onResponse: (response, responseIndex) =>
       recordIdMapResponse({
         response,
+        responseIndex,
         stats: result.databases,
         idMap: databaseIdMap,
         label: "Database",
@@ -360,6 +407,7 @@ export async function uploadMetadata({
     url: joinUrl(instanceUrl, API_PATHS.tables),
     apiKey,
     onWarning: warn,
+    onRequestSent: dumpFor("tables"),
     requests: remapForeignKey<TableEntry, TableRequest>({
       jsonPath: JSON_PATHS.tables,
       sourceFile: metadataFile,
@@ -369,9 +417,10 @@ export async function uploadMetadata({
       describeSkip: (table, oldDbId) =>
         `Skipping table ${table.id} (${table.name}): source db_id ${oldDbId} did not map to a target database`,
     }),
-    onResponse: (response) =>
+    onResponse: (response, responseIndex) =>
       recordIdMapResponse({
         response,
+        responseIndex,
         stats: result.tables,
         idMap: tableIdMap,
         label: "Table",
@@ -382,6 +431,7 @@ export async function uploadMetadata({
     url: joinUrl(instanceUrl, API_PATHS.fields),
     apiKey,
     onWarning: warn,
+    onRequestSent: dumpFor("fields"),
     requests: remapForeignKey<FieldEntry, FieldInsertRequest>({
       jsonPath: JSON_PATHS.fields,
       sourceFile: metadataFile,
@@ -391,9 +441,10 @@ export async function uploadMetadata({
       describeSkip: (field, oldTableId) =>
         `Skipping field ${field.id} (${field.name}): source table_id ${oldTableId} did not map to a target table`,
     }),
-    onResponse: (response) =>
+    onResponse: (response, responseIndex) =>
       recordIdMapResponse({
         response,
+        responseIndex,
         stats: result.fieldsInsert,
         idMap: fieldIdMap,
         label: "Field",
@@ -411,14 +462,15 @@ export async function uploadMetadata({
     url: joinUrl(instanceUrl, API_PATHS.fieldsFinalize),
     apiKey,
     onWarning: warn,
+    onRequestSent: dumpFor("fields-finalize"),
     requests: fieldFinalizeRequests(),
-    onResponse: (response) => {
+    onResponse: (response, responseIndex) => {
       if ("ok" in response) {
         result.fieldsFinalize.mapped += 1;
         return;
       }
       result.fieldsFinalize.errors += 1;
-      warn(formatError("Finalize", response.id, response));
+      warn(formatError("Finalize", response.id, response, responseIndex));
     },
   });
 
@@ -427,6 +479,7 @@ export async function uploadMetadata({
         url: joinUrl(instanceUrl, API_PATHS.fieldValues),
         apiKey,
         onWarning: warn,
+        onRequestSent: dumpFor("field-values"),
         requests: remapForeignKey<FieldValuesEntry, FieldValuesRequest>({
           jsonPath: JSON_PATHS.fieldValues,
           sourceFile: fieldValuesFile,
@@ -436,10 +489,12 @@ export async function uploadMetadata({
           describeSkip: (entry, oldId) =>
             `Skipping field values for field_id ${oldId}: no mapping from source field to target`,
         }),
-        onResponse: (response) => {
+        onResponse: (response, responseIndex) => {
           if ("error" in response) {
             result.fieldValues.errors += 1;
-            warn(formatError("Field values", response.field_id, response));
+            warn(
+              formatError("Field values", response.field_id, response, responseIndex),
+            );
             return;
           }
           result.fieldValues.mapped += 1;
