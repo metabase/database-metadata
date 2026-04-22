@@ -3,17 +3,9 @@ export type PostNdjsonOptions<Req, Res> = {
   apiKey: string;
   requests: AsyncIterable<Req>;
   onResponse: (response: Res, index: number) => void | Promise<void>;
-  onWarning?: (message: string) => void;
   /** Max rows per HTTP request. Default 2000. */
   batchSize?: number;
 };
-
-// JSON.stringify escapes control characters in string values, so the
-// serialized output should never contain a raw \n or \r. If it does (e.g. a
-// value's custom toJSON returned raw control chars), the server's line-seq
-// would split the line mid-object. Defensive: escape them before sending and
-// warn the caller so the upstream bug can be chased.
-const RAW_NEWLINE_PATTERN = /[\n\r]/g;
 
 // Cap rows-per-HTTP-POST so each request stays within one server-side DB
 // transaction. The Metabase NDJSON endpoints partition inserts in groups of
@@ -29,20 +21,18 @@ export async function postNdjson<Req, Res>({
   apiKey,
   requests,
   onResponse,
-  onWarning,
   batchSize = DEFAULT_BATCH_SIZE,
 }: PostNdjsonOptions<Req, Res>): Promise<void> {
   let globalIndex = 0;
 
   for await (const batch of batchAsyncIterable(requests, batchSize)) {
     const batchOffset = globalIndex;
-    await postNdjsonBatch({
+    await postNdjsonBatch<Req, Res>({
       url,
       apiKey,
       batch,
       onResponse: (response, localIndex) =>
         onResponse(response, batchOffset + localIndex),
-      onWarning,
     });
     globalIndex += batch.length;
   }
@@ -70,7 +60,6 @@ type PostBatchOptions<Req, Res> = {
   apiKey: string;
   batch: Req[];
   onResponse: (response: Res, index: number) => void | Promise<void>;
-  onWarning?: (message: string) => void;
 };
 
 async function postNdjsonBatch<Req, Res>({
@@ -78,13 +67,14 @@ async function postNdjsonBatch<Req, Res>({
   apiKey,
   batch,
   onResponse,
-  onWarning,
 }: PostBatchOptions<Req, Res>): Promise<void> {
   if (batch.length === 0) {
     return;
   }
 
-  const body = serializeBatch(batch, onWarning);
+  const body = new TextEncoder().encode(
+    batch.map((value) => JSON.stringify(value)).join("\n") + "\n",
+  );
 
   const response = await fetch(url, {
     method: "POST",
@@ -118,39 +108,10 @@ async function postNdjsonBatch<Req, Res>({
   }
 }
 
-function serializeBatch<Req>(
-  batch: Req[],
-  onWarning: ((message: string) => void) | undefined,
-): Uint8Array {
-  const encoder = new TextEncoder();
-  const chunks: Uint8Array[] = [];
-  let totalBytes = 0;
-
-  for (let index = 0; index < batch.length; index += 1) {
-    const raw = JSON.stringify(batch[index]);
-    const safe =
-      raw.includes("\n") || raw.includes("\r")
-        ? sanitizeRawNewlines(raw, index, onWarning)
-        : raw;
-    const encoded = encoder.encode(safe + "\n");
-    chunks.push(encoded);
-    totalBytes += encoded.length;
-  }
-
-  const body = new Uint8Array(totalBytes);
-  let offset = 0;
-  for (const chunk of chunks) {
-    body.set(chunk, offset);
-    offset += chunk.length;
-  }
-  return body;
-}
-
 export async function* parseNdjsonStream<T>(
   stream: AsyncIterable<Uint8Array>,
 ): AsyncGenerator<T> {
   const decoder = new TextDecoder();
-  // Slice once per chunk (not per line) to keep parsing O(n) on large responses.
   let pending = "";
 
   for await (const chunk of stream) {
@@ -160,8 +121,11 @@ export async function* parseNdjsonStream<T>(
       pending = buffer;
       continue;
     }
-    for (const line of splitLines(buffer.slice(0, lastNewline))) {
-      yield JSON.parse(line) as T;
+    for (const line of buffer.slice(0, lastNewline).split("\n")) {
+      const trimmed = line.trim();
+      if (trimmed.length > 0) {
+        yield JSON.parse(trimmed) as T;
+      }
     }
     pending = buffer.slice(lastNewline + 1);
   }
@@ -169,35 +133,5 @@ export async function* parseNdjsonStream<T>(
   const trailing = pending.trim();
   if (trailing.length > 0) {
     yield JSON.parse(trailing) as T;
-  }
-}
-
-function sanitizeRawNewlines(
-  raw: string,
-  index: number,
-  onWarning?: (message: string) => void,
-): string {
-  const firstOffset = raw.search(RAW_NEWLINE_PATTERN);
-  onWarning?.(
-    `Request #${index} had a raw \\n or \\r in its serialized JSON (offset ${firstOffset}); escaping before sending.`,
-  );
-  return raw.replace(RAW_NEWLINE_PATTERN, (char) =>
-    char === "\n" ? "\\n" : "\\r",
-  );
-}
-
-function* splitLines(block: string): Generator<string> {
-  let start = 0;
-  while (start <= block.length) {
-    const newlineIndex = block.indexOf("\n", start);
-    const end = newlineIndex === -1 ? block.length : newlineIndex;
-    const line = block.slice(start, end).trim();
-    if (line.length > 0) {
-      yield line;
-    }
-    if (newlineIndex === -1) {
-      return;
-    }
-    start = newlineIndex + 1;
   }
 }

@@ -51,17 +51,13 @@ async function readNdjsonLines(
   return lines;
 }
 
-function ndjsonStreamResponse(
-  responses: AsyncIterable<unknown>,
-): Response {
+function ndjsonStreamResponse(responses: AsyncIterable<unknown>): Response {
   const encoder = new TextEncoder();
   const body = new ReadableStream<Uint8Array>({
     async start(controller) {
       try {
         for await (const response of responses) {
-          controller.enqueue(
-            encoder.encode(JSON.stringify(response) + "\n"),
-          );
+          controller.enqueue(encoder.encode(JSON.stringify(response) + "\n"));
         }
         controller.close();
       } catch (error) {

@@ -366,7 +366,6 @@ export async function uploadMetadata({
     url: joinUrl(instanceUrl, API_PATHS.databases),
     apiKey,
     requests: streamDatabaseRequests(),
-    onWarning: warn,
     onResponse: (response, responseIndex) =>
       recordIdMapResponse({
         response,
@@ -380,7 +379,6 @@ export async function uploadMetadata({
   await postNdjson<TableRequest, IdMapResponse>({
     url: joinUrl(instanceUrl, API_PATHS.tables),
     apiKey,
-    onWarning: warn,
     requests: remapForeignKey<TableEntry, TableRequest>({
       jsonPath: JSON_PATHS.tables,
       sourceFile: metadataFile,
@@ -403,7 +401,6 @@ export async function uploadMetadata({
   await postNdjson<FieldInsertRequest, IdMapResponse>({
     url: joinUrl(instanceUrl, API_PATHS.fields),
     apiKey,
-    onWarning: warn,
     requests: remapForeignKey<FieldEntry, FieldInsertRequest>({
       jsonPath: JSON_PATHS.fields,
       sourceFile: metadataFile,
@@ -433,7 +430,6 @@ export async function uploadMetadata({
   const finalizePass = postNdjson<FieldFinalizeRequest, FieldFinalizeResponse>({
     url: joinUrl(instanceUrl, API_PATHS.fieldsFinalize),
     apiKey,
-    onWarning: warn,
     requests: fieldFinalizeRequests(),
     onResponse: (response, responseIndex) => {
       if ("ok" in response) {
@@ -449,7 +445,6 @@ export async function uploadMetadata({
     ? postNdjson<FieldValuesRequest, FieldValuesResponse>({
         url: joinUrl(instanceUrl, API_PATHS.fieldValues),
         apiKey,
-        onWarning: warn,
         requests: remapForeignKey<FieldValuesEntry, FieldValuesRequest>({
           jsonPath: JSON_PATHS.fieldValues,
           sourceFile: fieldValuesFile,
@@ -463,7 +458,12 @@ export async function uploadMetadata({
           if ("error" in response) {
             result.fieldValues.errors += 1;
             warn(
-              formatError("Field values", response.field_id, response, responseIndex),
+              formatError(
+                "Field values",
+                response.field_id,
+                response,
+                responseIndex,
+              ),
             );
             return;
           }
