@@ -21,6 +21,8 @@ type ParsedValues = {
   "no-field-values"?: boolean;
   "no-extract"?: boolean;
   "api-key"?: string;
+  verbose?: boolean;
+  strict?: boolean;
 };
 
 const DEFAULT_PATHS = {
@@ -28,6 +30,8 @@ const DEFAULT_PATHS = {
   fieldValues: ".metabase/field-values.json",
   extract: ".metabase/databases",
 } as const;
+
+const MAX_CAPTURED_WARNINGS = 50;
 
 const HELP = `Usage: database-metadata <command> [arguments] [options]
 
@@ -50,6 +54,8 @@ Commands:
     --field-values <path>   Override field-values.json path (default: .metabase/field-values.json)
     --no-field-values       Skip uploading field values
     --api-key <key>         API key. Defaults to METABASE_API_KEY env var.
+    --verbose, -v           Stream per-row warnings (default: aggregate into a summary)
+    --strict                Exit non-zero when any row was rejected (default: exit 0 on per-row errors)
 
   download-metadata <instance-url>                Stream metadata + field values from a
                                                   Metabase instance into .metabase/ and
@@ -76,6 +82,8 @@ function parseArguments() {
       "no-field-values": { type: "boolean", default: false },
       "no-extract": { type: "boolean", default: false },
       "api-key": { type: "string" },
+      verbose: { type: "boolean", short: "v", default: false },
+      strict: { type: "boolean", default: false },
     },
   });
 }
@@ -145,14 +153,31 @@ async function handleUploadMetadata(
     ? undefined
     : (values["field-values"] ?? DEFAULT_PATHS.fieldValues);
 
+  const warnings: string[] = [];
+  let truncated = 0;
+  const onWarning = values.verbose
+    ? (message: string) => console.warn(message)
+    : (message: string) => {
+        if (warnings.length < MAX_CAPTURED_WARNINGS) {
+          warnings.push(message);
+        } else {
+          truncated += 1;
+        }
+      };
+
   const stats = await uploadMetadata({
     metadataFile,
     fieldValuesFile,
     instanceUrl,
     apiKey,
+    onWarning,
   });
   console.log(formatUploadReport(stats, Boolean(fieldValuesFile)));
-  process.exit(hasAnyErrors(stats) ? 1 : 0);
+  const summary = formatWarningSummary(warnings, truncated);
+  if (summary) {
+    console.log(summary);
+  }
+  process.exit(values.strict && hasAnyItemErrors(stats) ? 1 : 0);
 }
 
 function formatStepLine(label: string, step: UploadStepStats): string {
@@ -192,8 +217,26 @@ function formatUploadReport(
   return lines.join("\n");
 }
 
-function hasAnyErrors(stats: UploadMetadataResult): boolean {
+function hasAnyItemErrors(stats: UploadMetadataResult): boolean {
   return Object.values(stats).some((step) => step.errors > 0);
+}
+
+function formatWarningSummary(warnings: string[], truncated: number): string {
+  if (warnings.length === 0) {
+    return "";
+  }
+  const total = warnings.length + truncated;
+  const lines = [
+    "",
+    `Warnings: ${total} captured (showing first ${warnings.length})`,
+    ...warnings.map((message) => `  - ${message}`),
+  ];
+  if (truncated > 0) {
+    lines.push(
+      `${truncated} more suppressed. Re-run with --verbose to stream individual warnings.`,
+    );
+  }
+  return lines.join("\n");
 }
 
 async function handleDownloadMetadata(

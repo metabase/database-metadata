@@ -27,6 +27,7 @@ type MockServerControl = {
   stop: () => Promise<void>;
   setFieldInsertBehavior: (behavior: FieldInsertBehavior) => void;
   setFieldFailure: (oldId: number) => void;
+  setDatabaseFailure: (oldId: number) => void;
 };
 
 type FieldInsertBehavior = "new" | "existing" | "alternate";
@@ -74,6 +75,7 @@ function startMockServer(): MockServerControl {
   const calls: RecordedCall[] = [];
   let fieldInsertBehavior: FieldInsertBehavior = "new";
   const fieldFailures = new Set<number>();
+  const databaseFailures = new Set<number>();
   let fieldInsertCounter = 0;
 
   const server = Bun.serve({
@@ -99,6 +101,14 @@ function startMockServer(): MockServerControl {
         case "/api/database/metadata/databases": {
           async function* responses() {
             for (const line of lines as IdLine[]) {
+              if (databaseFailures.has(line.id)) {
+                yield {
+                  old_id: line.id,
+                  error: "no_match",
+                  detail: "test failure",
+                };
+                continue;
+              }
               yield { old_id: line.id, new_id: line.id + DB_OFFSET };
             }
           }
@@ -167,6 +177,9 @@ function startMockServer(): MockServerControl {
     },
     setFieldFailure: (oldId) => {
       fieldFailures.add(oldId);
+    },
+    setDatabaseFailure: (oldId) => {
+      databaseFailures.add(oldId);
     },
   };
 }
@@ -310,6 +323,33 @@ describe("uploadMetadata", () => {
     for (const line of valuesCall.lines as FieldValuesLine[]) {
       expect(line.field_id).toBeGreaterThanOrEqual(FIELD_OFFSET + 1);
     }
+  });
+
+  it("skips downstream rows when the databases endpoint returns no_match for a row", async () => {
+    mock.setDatabaseFailure(1);
+    const warnings: string[] = [];
+    const stats = await uploadMetadata({
+      metadataFile: EXAMPLE_METADATA,
+      fieldValuesFile: EXAMPLE_FIELD_VALUES,
+      instanceUrl: mock.baseUrl,
+      apiKey: "k",
+      onWarning: (message) => warnings.push(message),
+    });
+
+    expect(stats).toEqual({
+      databases: { mapped: 0, errors: 1 },
+      tables: { mapped: 0, errors: 0 },
+      fieldsInsert: { mapped: 0, errors: 0, inserted: 0, matched: 0 },
+      fieldsFinalize: { mapped: 0, errors: 0 },
+      fieldValues: { mapped: 0, errors: 0 },
+    });
+    expect(
+      warnings.some((w) => w.includes("Database 1") && w.includes("no_match")),
+    ).toBe(true);
+    const tableCall = mock.calls.find(
+      (call) => call.path === "/api/database/metadata/tables",
+    );
+    expect(tableCall?.lines ?? []).toEqual([]);
   });
 
   it("counts per-row errors without aborting the pipeline", async () => {
