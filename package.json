@@ -1,6 +1,6 @@
 {
   "name": "@metabase/database-metadata",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "CLI tool to extract Metabase database metadata into YAML files",
   "license": "SEE LICENSE IN LICENSE.txt",
   "repository": {
@@ -39,7 +39,6 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@streamparser/json-node": "^0.0.22",
     "js-yaml": "^4.1.0"
   },
   "devDependencies": {
