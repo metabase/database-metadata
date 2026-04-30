@@ -1,8 +1,8 @@
 export {
-  extractMetadata,
+  extractTableMetadata,
   type ExtractMetadataOptions,
   type ExtractMetadataResult,
-} from "./extract-metadata.js";
+} from "./extract-table-metadata.js";
 export {
   extractFieldValues,
   type ExtractFieldValuesOptions,

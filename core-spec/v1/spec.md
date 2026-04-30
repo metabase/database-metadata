@@ -273,7 +273,7 @@ Field values are **sampled, not exhaustive**: Metabase caps the list (typically 
 The recommended workflow is therefore strictly sequential:
 
 1. Download `table_metadata.json` from the Metabase workspace page.
-2. Run `extract-metadata` to write the database/table/field YAML tree.
+2. Run `extract-table-metadata` to write the database/table/field YAML tree.
 3. Download `field_values.json` from the **same** workspace, ideally back-to-back with step 1.
 4. Run `extract-field-values` against the same output folder to drop per-field values files into the existing tree.
 

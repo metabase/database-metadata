@@ -47,7 +47,7 @@ describe("cli", () => {
     });
   });
 
-  describe("extract-metadata", () => {
+  describe("extract-table-metadata", () => {
     let workdir: string;
 
     beforeEach(() => {
@@ -60,7 +60,7 @@ describe("cli", () => {
 
     it("extracts the bundled example into YAML files", () => {
       const { stdout, exitCode } = runCli([
-        "extract-metadata",
+        "extract-table-metadata",
         EXAMPLE_INPUT,
         workdir,
       ]);
@@ -73,7 +73,7 @@ describe("cli", () => {
     });
 
     it("errors when arguments are missing", () => {
-      const { stderr, exitCode } = runCli(["extract-metadata"]);
+      const { stderr, exitCode } = runCli(["extract-table-metadata"]);
       expect(exitCode).toBe(1);
       expect(stderr).toContain(
         "<input-file> and <output-folder> arguments are required",

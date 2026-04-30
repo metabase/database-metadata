@@ -27,7 +27,7 @@ Metadata is downloaded as `table_metadata.json` from the Metabase workspace page
 The CLI turns that JSON into the human- and agent-friendly YAML tree described in the spec:
 
 ```sh
-bunx @metabase/database-metadata extract-metadata <input-file> <output-folder>
+bunx @metabase/database-metadata extract-table-metadata <input-file> <output-folder>
 ```
 
 - `<input-file>` — path to the `table_metadata.json` downloaded from the workspace page.
@@ -41,9 +41,9 @@ Metabase keeps a sampled list of distinct values for each field that's low-cardi
 bunx @metabase/database-metadata extract-field-values <metadata-file> <field-values-file> <output-folder>
 ```
 
-- `<metadata-file>` — the same `table_metadata.json` used by `extract-metadata`. Field values reference fields by numeric ID, which the CLI resolves to natural keys using the metadata.
+- `<metadata-file>` — the same `table_metadata.json` used by `extract-table-metadata`. Field values reference fields by numeric ID, which the CLI resolves to natural keys using the metadata.
 - `<field-values-file>` — path to the `field_values.json` downloaded from the workspace page.
-- `<output-folder>` — destination directory; typically the same one used for `extract-metadata`, so values files land next to the table YAMLs they belong to.
+- `<output-folder>` — destination directory; typically the same one used for `extract-table-metadata`, so values files land next to the table YAMLs they belong to.
 
 One YAML file is written per field that has values. Fields with empty samples are skipped; field IDs not present in the metadata are reported as orphans and skipped. See the spec's [Field Values](core-spec/v1/spec.md#field-values) section for the on-disk shape and when agents should consult these files.
 
@@ -91,7 +91,7 @@ mkdir -p .metabase
 # Drop table_metadata.json (and optionally field_values.json) from the workspace page into .metabase/
 
 rm -rf .metabase/databases
-bunx @metabase/database-metadata extract-metadata .metabase/table_metadata.json .metabase/databases
+bunx @metabase/database-metadata extract-table-metadata .metabase/table_metadata.json .metabase/databases
 bunx @metabase/database-metadata extract-field-values .metabase/table_metadata.json .metabase/field_values.json .metabase/databases
 ```
 
@@ -109,7 +109,7 @@ The workflow requires an `NPM_RELEASE_TOKEN` secret with publish access to the `
 
 ```sh
 bun install
-bun bin/cli.ts extract-metadata examples/v1/table_metadata.json /tmp/.metabase/databases
+bun bin/cli.ts extract-table-metadata examples/v1/table_metadata.json /tmp/.metabase/databases
 ```
 
 ### Scripts

@@ -3,7 +3,7 @@
 import { parseArgs } from "node:util";
 
 import { extractFieldValues } from "../src/extract-field-values.js";
-import { extractMetadata } from "../src/extract-metadata.js";
+import { extractTableMetadata } from "../src/extract-table-metadata.js";
 import { extractSpec } from "../src/extract-spec.js";
 
 type ParsedValues = {
@@ -14,7 +14,7 @@ type ParsedValues = {
 const HELP = `Usage: database-metadata <command> [arguments] [options]
 
 Commands:
-  extract-metadata <input-file> <output-folder>   Extract metadata JSON into YAML files
+  extract-table-metadata <input-file> <output-folder>   Extract metadata JSON into YAML files
                                                   Writes one YAML per database + one per table
                                                   with fields nested inside.
 
@@ -50,7 +50,7 @@ function handleExtractMetadata(positionals: string[]): void {
     process.exit(1);
   }
 
-  const stats = extractMetadata({ inputFile, outputFolder });
+  const stats = extractTableMetadata({ inputFile, outputFolder });
   console.log(
     `Extracted ${stats.databases} databases, ${stats.tables} tables, ${stats.fields} fields`,
   );
@@ -96,7 +96,7 @@ function main(): void {
   }
 
   switch (command) {
-    case "extract-metadata":
+    case "extract-table-metadata":
       return handleExtractMetadata(positionals);
     case "extract-field-values":
       return handleExtractFieldValues(positionals);

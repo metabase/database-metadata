@@ -10,12 +10,12 @@ import { tmpdir } from "os";
 import { join, resolve } from "path";
 import yaml from "js-yaml";
 
-import { extractMetadata } from "./extract-metadata.js";
+import { extractTableMetadata } from "./extract-table-metadata.js";
 
 const REPO_ROOT = resolve(import.meta.dirname, "..");
 const EXAMPLE_INPUT = join(REPO_ROOT, "examples/v1/table_metadata.json");
 
-describe("extractMetadata", () => {
+describe("extractTableMetadata", () => {
   let workdir: string;
 
   beforeEach(() => {
@@ -27,7 +27,7 @@ describe("extractMetadata", () => {
   });
 
   it("extracts the bundled sample database to YAML", () => {
-    const stats = extractMetadata({
+    const stats = extractTableMetadata({
       inputFile: EXAMPLE_INPUT,
       outputFolder: workdir,
     });
@@ -49,7 +49,7 @@ describe("extractMetadata", () => {
   });
 
   it("strips numeric ids and uses natural-key db_id on tables", () => {
-    extractMetadata({ inputFile: EXAMPLE_INPUT, outputFolder: workdir });
+    extractTableMetadata({ inputFile: EXAMPLE_INPUT, outputFolder: workdir });
     const tablePath = join(
       workdir,
       "Sample Database",
@@ -69,7 +69,7 @@ describe("extractMetadata", () => {
   });
 
   it("rewrites fk_target_field_id as a natural-key tuple", () => {
-    extractMetadata({ inputFile: EXAMPLE_INPUT, outputFolder: workdir });
+    extractTableMetadata({ inputFile: EXAMPLE_INPUT, outputFolder: workdir });
     const tablePath = join(
       workdir,
       "Sample Database",
@@ -103,7 +103,7 @@ describe("extractMetadata", () => {
       }),
     );
     const out = join(workdir, "out");
-    extractMetadata({ inputFile: input, outputFolder: out });
+    extractTableMetadata({ inputFile: input, outputFolder: out });
 
     expect(
       existsSync(join(out, "weird__SLASH__name", "weird__SLASH__name.yaml")),
@@ -111,7 +111,7 @@ describe("extractMetadata", () => {
   });
 
   it("regenerates output that matches the bundled examples", () => {
-    extractMetadata({ inputFile: EXAMPLE_INPUT, outputFolder: workdir });
+    extractTableMetadata({ inputFile: EXAMPLE_INPUT, outputFolder: workdir });
 
     const checkedIn = readFileSync(
       join(
