@@ -61,18 +61,18 @@ Omit `--file` to write `spec.md` into the current directory.
 
 The following is the **default** workflow for a project that wants to use Metabase metadata. It is a convention, not a requirement — teams are free to organize things differently.
 
-### 1. A `.metabase/` directory at the repo root
+### 1. A `.metadata/` directory at the repo root
 
-Create a top-level `.metabase/` directory and **add it to `.gitignore`**. This is where the raw `table_metadata.json` and the extracted `databases/` YAML tree live:
+Create a top-level `.metadata/` directory and **add it to `.gitignore`**. This is where the raw `table_metadata.json` and the extracted `databases/` YAML tree live:
 
 ```
-.metabase/
+.metadata/
 ├── table_metadata.json
 └── databases/
     └── …
 ```
 
-### 2. Why `.metabase/` should not be committed
+### 2. Why `.metadata/` should not be committed
 
 On a large data warehouse the metadata export can easily reach **hundreds of megabytes or several gigabytes**. Committing it:
 
@@ -84,18 +84,18 @@ Each developer (or a CI job) fetches metadata on demand from their own Metabase 
 
 ### 3. Download from the workspace page and extract
 
-Each developer downloads `table_metadata.json` (and optionally `field_values.json`) from the Metabase workspace page and drops them into `.metabase/`. Then run the extractors:
+Each developer downloads `table_metadata.json` (and optionally `field_values.json`) from the Metabase workspace page and drops them into `.metadata/`. Then run the extractors:
 
 ```sh
-mkdir -p .metabase
-# Drop table_metadata.json (and optionally field_values.json) from the workspace page into .metabase/
+mkdir -p .metadata
+# Drop table_metadata.json (and optionally field_values.json) from the workspace page into .metadata/
 
-rm -rf .metabase/databases
-bunx @metabase/database-metadata extract-table-metadata .metabase/table_metadata.json .metabase/databases
-bunx @metabase/database-metadata extract-field-values .metabase/table_metadata.json .metabase/field_values.json .metabase/databases
+rm -rf .metadata/databases
+bunx @metabase/database-metadata extract-table-metadata .metadata/table_metadata.json .metadata/databases
+bunx @metabase/database-metadata extract-field-values .metadata/table_metadata.json .metadata/field_values.json .metadata/databases
 ```
 
-After this, tools and agents should read the YAML tree under `.metabase/databases/` — not `table_metadata.json` or `field_values.json`, which exist only as input to the extractors.
+After this, tools and agents should read the YAML tree under `.metadata/databases/` — not `table_metadata.json` or `field_values.json`, which exist only as input to the extractors.
 
 ## Publishing to NPM
 
@@ -109,7 +109,7 @@ The workflow requires an `NPM_RELEASE_TOKEN` secret with publish access to the `
 
 ```sh
 bun install
-bun bin/cli.ts extract-table-metadata examples/v1/table_metadata.json /tmp/.metabase/databases
+bun bin/cli.ts extract-table-metadata examples/v1/table_metadata.json /tmp/.metadata/databases
 ```
 
 ### Scripts
