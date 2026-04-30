@@ -110,7 +110,7 @@ function buildStats(metadata: RawMetadata): ExtractMetadataResult {
   };
 }
 
-export function extractMetadata({
+export function extractTableMetadata({
   inputFile,
   outputFolder,
 }: ExtractMetadataOptions): ExtractMetadataResult {

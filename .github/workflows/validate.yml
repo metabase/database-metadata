@@ -18,10 +18,10 @@ jobs:
       - run: bun install
 
       - name: Extract metadata
-        run: bun run bin/cli.ts extract-metadata examples/v1/metadata.json /tmp/databases
+        run: bun run bin/cli.ts extract-table-metadata examples/v1/table_metadata.json /tmp/databases
 
       - name: Extract field values
-        run: bun run bin/cli.ts extract-field-values examples/v1/metadata.json examples/v1/field-values.json /tmp/databases
+        run: bun run bin/cli.ts extract-field-values examples/v1/table_metadata.json examples/v1/field_values.json /tmp/databases
 
       - name: Diff examples
         run: diff -r examples/v1/databases /tmp/databases

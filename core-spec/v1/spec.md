@@ -8,7 +8,7 @@ Metabase database metadata is a read-only snapshot of databases, tables, and fie
 
 The format is designed to be **portable** and **reviewable**: numeric IDs are omitted or replaced with human-readable natural keys (database name, `[database, schema, table]` tuples, etc.). Files can be diffed, grepped, and edited by hand.
 
-The raw API response (`metadata.json`) is a single flat JSON document with `databases`, `tables`, and `fields` arrays, optimized for transport rather than reading. It can be arbitrarily large — tens or hundreds of megabytes on warehouses with many tables — and is not intended for direct consumption. Tools and humans should read the extracted YAML tree under `databases/` instead, where each entity lives in its own small file and foreign keys are resolved to natural-key tuples.
+The raw `table_metadata.json` (downloaded from the Metabase workspace page) is a single flat JSON document with `databases`, `tables`, and `fields` arrays, optimized for transport rather than reading. It can be arbitrarily large — tens or hundreds of megabytes on warehouses with many tables — and is not intended for direct consumption. Tools and humans should read the extracted YAML tree under `databases/` instead, where each entity lives in its own small file and foreign keys are resolved to natural-key tuples.
 
 ## Table of Contents
 
@@ -123,10 +123,10 @@ Common semantic types, grouped by purpose:
 
 ## Folder Structure
 
-By convention, metadata is extracted under a `.metabase/databases/` directory, with each database occupying its own folder. The exporter itself doesn't enforce this location; it writes the tree below into whatever folder the caller passes.
+By convention, metadata is extracted under a `.metadata/databases/` directory, with each database occupying its own folder. The exporter itself doesn't enforce this location; it writes the tree below into whatever folder the caller passes.
 
 ```
-.metabase/
+.metadata/
 └── databases/
     └── {database}/
         ├── {database}.yaml
@@ -268,13 +268,13 @@ Field values are **sampled, not exhaustive**: Metabase caps the list (typically 
 
 ### Extraction order
 
-**Field values must be extracted *after* metadata, never before or in isolation.** The raw `field-values.json` references fields by numeric `field_id` only; resolving those IDs to the natural-key tuples used everywhere in this format requires the metadata index. The extractor takes both `metadata.json` and `field-values.json` as inputs, and the two **must come from the same Metabase instance at the same point in time** — a stale metadata file paired with a fresh values file (or vice versa) will silently drop entries as orphans whenever a field has been added, removed, or had its ID reassigned.
+**Field values must be extracted *after* metadata, never before or in isolation.** The raw `field_values.json` references fields by numeric `field_id` only; resolving those IDs to the natural-key tuples used everywhere in this format requires the metadata index. The extractor takes both `table_metadata.json` and `field_values.json` as inputs, and the two **must come from the same Metabase workspace download at the same point in time** — a stale metadata file paired with a fresh values file (or vice versa) will silently drop entries as orphans whenever a field has been added, removed, or had its ID reassigned.
 
 The recommended workflow is therefore strictly sequential:
 
-1. Fetch `metadata.json` from the Metabase instance.
-2. Run `extract-metadata` to write the database/table/field YAML tree.
-3. Fetch `field-values.json` from the **same** instance, ideally back-to-back with step 1.
+1. Download `table_metadata.json` from the Metabase workspace page.
+2. Run `extract-table-metadata` to write the database/table/field YAML tree.
+3. Download `field_values.json` from the **same** workspace, ideally back-to-back with step 1.
 4. Run `extract-field-values` against the same output folder to drop per-field values files into the existing tree.
 
 Agents reading the tree can rely on this ordering: any `{table}/{field}.yaml` file is guaranteed to have a corresponding entry in the parent `{table}.yaml`'s `fields` array.
