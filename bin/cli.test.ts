@@ -5,8 +5,8 @@ import { join, resolve } from "path";
 
 const REPO_ROOT = resolve(import.meta.dirname, "..");
 const CLI = "bin/cli.ts";
-const EXAMPLE_INPUT = "examples/v1/metadata.json";
-const EXAMPLE_FIELD_VALUES = "examples/v1/field-values.json";
+const EXAMPLE_INPUT = "examples/v1/table_metadata.json";
+const EXAMPLE_FIELD_VALUES = "examples/v1/field_values.json";
 
 type RunResult = {
   stdout: string;

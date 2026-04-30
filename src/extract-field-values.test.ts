@@ -13,8 +13,8 @@ import yaml from "js-yaml";
 import { extractFieldValues } from "./extract-field-values.js";
 
 const REPO_ROOT = resolve(import.meta.dirname, "..");
-const EXAMPLE_METADATA = join(REPO_ROOT, "examples/v1/metadata.json");
-const EXAMPLE_FIELD_VALUES = join(REPO_ROOT, "examples/v1/field-values.json");
+const EXAMPLE_METADATA = join(REPO_ROOT, "examples/v1/table_metadata.json");
+const EXAMPLE_FIELD_VALUES = join(REPO_ROOT, "examples/v1/field_values.json");
 
 describe("extractFieldValues", () => {
   let workdir: string;
@@ -110,7 +110,7 @@ describe("extractFieldValues", () => {
         },
       ],
     };
-    const fieldValuesFile = join(workdir, "field-values.json");
+    const fieldValuesFile = join(workdir, "field_values.json");
     writeFileSync(fieldValuesFile, JSON.stringify(fieldValues));
 
     const stats = extractFieldValues({
@@ -137,7 +137,7 @@ describe("extractFieldValues", () => {
         },
       ],
     };
-    const fieldValuesFile = join(workdir, "field-values.json");
+    const fieldValuesFile = join(workdir, "field_values.json");
     writeFileSync(fieldValuesFile, JSON.stringify(fieldValues));
 
     const stats = extractFieldValues({
@@ -154,7 +154,7 @@ describe("extractFieldValues", () => {
   });
 
   it("joins nested JSON field paths with dots in the filename", () => {
-    const metadataPath = join(workdir, "metadata.json");
+    const metadataPath = join(workdir, "table_metadata.json");
     writeFileSync(
       metadataPath,
       JSON.stringify({
@@ -168,7 +168,7 @@ describe("extractFieldValues", () => {
       }),
     );
 
-    const fieldValuesPath = join(workdir, "field-values.json");
+    const fieldValuesPath = join(workdir, "field_values.json");
     writeFileSync(
       fieldValuesPath,
       JSON.stringify({
@@ -219,7 +219,7 @@ describe("extractFieldValues", () => {
         },
       ],
     };
-    const fieldValuesFile = join(workdir, "field-values.json");
+    const fieldValuesFile = join(workdir, "field_values.json");
     writeFileSync(fieldValuesFile, JSON.stringify(fieldValues));
 
     extractFieldValues({

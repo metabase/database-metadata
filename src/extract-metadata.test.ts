@@ -13,7 +13,7 @@ import yaml from "js-yaml";
 import { extractMetadata } from "./extract-metadata.js";
 
 const REPO_ROOT = resolve(import.meta.dirname, "..");
-const EXAMPLE_INPUT = join(REPO_ROOT, "examples/v1/metadata.json");
+const EXAMPLE_INPUT = join(REPO_ROOT, "examples/v1/table_metadata.json");
 
 describe("extractMetadata", () => {
   let workdir: string;
