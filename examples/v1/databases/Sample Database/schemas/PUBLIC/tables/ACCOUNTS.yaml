@@ -1,7 +1,7 @@
+db_id: Sample Database
 name: ACCOUNTS
 schema: PUBLIC
 description: Information on customer accounts registered with Piespace. Each account represents a new organization signing up for on-demand pies.
-db_id: Sample Database
 fields:
   - name: LONGITUDE
     base_type: type/Float

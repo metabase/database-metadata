@@ -1,7 +1,7 @@
+db_id: Sample Database
 name: PRODUCTS
 schema: PUBLIC
 description: Includes a catalog of all the products ever sold by the famed Sample Company.
-db_id: Sample Database
 fields:
   - name: ID
     description: The numerical product number. Only used internally. All external communication should use the title or EAN.
