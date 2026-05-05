@@ -1,5 +1,10 @@
-import { createReadStream } from "node:fs";
-import { access, appendFile, mkdir, writeFile } from "node:fs/promises";
+import {
+  appendFileSync,
+  createReadStream,
+  existsSync,
+  mkdirSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname, join } from "node:path";
 import yaml from "js-yaml";
 import { JSONParser } from "@streamparser/json-node";
@@ -48,16 +53,18 @@ export type ExtractMetadataResult = {
   fields: number;
 };
 
-const YAML_OPTS = { lineWidth: -1, noRefs: true } as const;
+type Order = "tables-first" | "fields-first";
 
-async function fileExists(path: string): Promise<boolean> {
-  try {
-    await access(path);
-    return true;
-  } catch {
-    return false;
-  }
-}
+type TouchState = {
+   lastTouched: string | null 
+};
+
+type FieldState = {
+  buffer: string
+  bufferedPath: string | null;
+};
+
+const YAML_OPTS = { lineWidth: -1, noRefs: true } as const;
 
 function escapeFilename(name: string): string {
   return name.replace(/\//g, "__SLASH__").replace(/\\/g, "__BACKSLASH__");
@@ -100,79 +107,171 @@ function formatField(field: Field) {
   return rest;
 }
 
-function createParser(inputFile: string, key: string): JSONParser {
-  const parser = new JSONParser({
-    paths: [`$.${key}.*`],
-    keepStack: false,
-  });
+function isDatabase(value: unknown): value is Database {
+  return typeof value === "object" && value !== null && "engine" in value;
+}
+
+function isField(value: unknown): value is Field {
+  return typeof value === "object" && value !== null && "table_id" in value;
+}
+
+function isTable(value: unknown): value is Table {
+  return typeof value === "object" && value !== null && "db_id" in value;
+}
+
+// --- Subpass 1: write a database yaml file.
+function writeDatabase(
+  outputFolder: string,
+  db: Database,
+  stats: ExtractMetadataResult,
+): void {
+  mkdirSync(join(outputFolder, escapeFilename(db.name)), { recursive: true });
+  writeFileSync(
+    getDatabasePath(outputFolder, db.name),
+    yaml.dump(formatDatabase(db), YAML_OPTS),
+  );
+  stats.databases++;
+}
+
+// --- Subpass 2: touch each parent table file so the table phase can detect "has fields"
+// via existsSync. Skips the syscall for runs of consecutive fields sharing a path.
+function touchTableFile(
+  outputFolder: string,
+  field: Field,
+  state: TouchState,
+): void {
+  const [dbName, tableSchema, tableName] = field.table_id;
+  const path = getTablePath(outputFolder, dbName, tableSchema, tableName);
+  if (path === state.lastTouched) {
+    return;
+  }
+  if (!existsSync(path)) {
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, "");
+  }
+  state.lastTouched = path;
+}
+
+// --- Subpass 3: write the table yaml; if the file already exists (touched by subpass 2),
+// append a bare `fields:` trailer so subpass 4 can stream items underneath.
+function writeTable(
+  outputFolder: string,
+  table: Table,
+  stats: ExtractMetadataResult,
+): void {
+  const path = getTablePath(
+    outputFolder,
+    table.db_id,
+    table.schema,
+    table.name,
+  );
+  const hasFields = existsSync(path);
+  if (!hasFields) {
+    mkdirSync(dirname(path), { recursive: true });
+  }
+  let content = yaml.dump(formatTable(table), YAML_OPTS);
+  if (hasFields) {
+    content += "fields:\n";
+  }
+  writeFileSync(path, content);
+  stats.tables++;
+}
+
+// --- Subpass 4: append a field as a 2-space-indented YAML list item, buffering
+// consecutive fields sharing a path so they coalesce into one appendFileSync per table.
+// The caller flushes the trailing buffer once the stream ends.
+function writeField(
+  outputFolder: string,
+  field: Field,
+  state: FieldState,
+  stats: ExtractMetadataResult,
+): void {
+  const [dbName, tableSchema, tableName] = field.table_id;
+  const path = getTablePath(outputFolder, dbName, tableSchema, tableName);
+  if (path !== state.bufferedPath) {
+    if (state.bufferedPath !== null) {
+      appendFileSync(state.bufferedPath, state.buffer);
+    }
+    state.bufferedPath = path;
+    state.buffer = "";
+  }
+  state.buffer += indentLines(yaml.dump([formatField(field)], YAML_OPTS), "  ");
+  stats.fields++;
+}
+
+function streamAll(inputFile: string, paths: string[]): JSONParser {
+  const parser = new JSONParser({ paths, keepStack: false });
   createReadStream(inputFile).pipe(parser);
   return parser;
+}
+
+// --- Pass 1: stream the entire JSON. Always run subpass 1 (dbs) + subpass 2 (touch).
+// Detect order from the first non-database hit; if fields appear before tables, also run
+// subpass 3 (writeTable) here so pass 2 only has to write fields.
+async function firstPass(
+  inputFile: string,
+  outputFolder: string,
+  stats: ExtractMetadataResult,
+): Promise<Order> {
+  let order: Order | null = null;
+  const state: TouchState = { lastTouched: null };
+
+  for await (const { value } of streamAll(inputFile, [
+    "$.databases.*",
+    "$.tables.*",
+    "$.fields.*",
+  ])) {
+    if (isDatabase(value)) {
+      writeDatabase(outputFolder, value, stats);
+    } else if (isField(value)) {
+      if (order === null) {
+        order = "fields-first";
+      }
+      touchTableFile(outputFolder, value, state);
+    } else if (isTable(value)) {
+      if (order === null) {
+        order = "tables-first";
+      }
+      if (order === "fields-first") {
+        writeTable(outputFolder, value, stats);
+      }
+      // tables-first: skip — pass 2 will write them.
+    }
+  }
+
+  return order ?? "tables-first";
+}
+
+// --- Pass 2: in tables-first mode, run subpass 3 (writeTable) + subpass 4 (writeField).
+// In fields-first mode, only subpass 4 — tables were already written in pass 1.
+async function secondPass(
+  inputFile: string,
+  outputFolder: string,
+  order: Order,
+  stats: ExtractMetadataResult,
+): Promise<void> {
+  const state: FieldState = { buffer: "", bufferedPath: null };
+  const paths =
+    order === "tables-first" ? ["$.tables.*", "$.fields.*"] : ["$.fields.*"];
+
+  for await (const { value } of streamAll(inputFile, paths)) {
+    if (isTable(value)) {
+      writeTable(outputFolder, value, stats);
+    } else if (isField(value)) {
+      writeField(outputFolder, value, state, stats);
+    }
+  }
+  if (state.bufferedPath !== null) {
+    appendFileSync(state.bufferedPath, state.buffer);
+  }
 }
 
 export async function extractTableMetadata({
   inputFile,
   outputFolder,
 }: ExtractMetadataOptions): Promise<ExtractMetadataResult> {
-  let databases = 0;
-  let tables = 0;
-  let fields = 0;
-
-  // Pass 1 — databases: write each database yaml.
-  for await (const { value } of createParser(inputFile, "databases")) {
-    const db: Database = value;
-    await mkdir(join(outputFolder, escapeFilename(db.name)), {
-      recursive: true,
-    });
-    await writeFile(
-      getDatabasePath(outputFolder, db.name),
-      yaml.dump(formatDatabase(db), YAML_OPTS),
-    );
-    databases++;
-  }
-
-  // Pass 2 — fields (touch): create an empty file at each parent table's path so pass 3
-  // can detect "this table has fields" via fileExists.
-  for await (const { value } of createParser(inputFile, "fields")) {
-    const field: Field = value;
-    const [dbName, tableSchema, tableName] = field.table_id;
-    const path = getTablePath(outputFolder, dbName, tableSchema, tableName);
-    if (!(await fileExists(path))) {
-      await mkdir(dirname(path), { recursive: true });
-      await writeFile(path, "");
-    }
-  }
-
-  // Pass 3 — tables: write each table's metadata; when pass 2 already created the file,
-  // append a bare `fields:` so pass 4 can stream items underneath.
-  for await (const { value } of createParser(inputFile, "tables")) {
-    const table: Table = value;
-    const path = getTablePath(
-      outputFolder,
-      table.db_id,
-      table.schema,
-      table.name,
-    );
-    const hasFields = await fileExists(path);
-    if (!hasFields) {
-      await mkdir(dirname(path), { recursive: true });
-    }
-    let content = yaml.dump(formatTable(table), YAML_OPTS);
-    if (hasFields) {
-      content += "fields:\n";
-    }
-    await writeFile(path, content);
-    tables++;
-  }
-
-  // Pass 4 — fields (write): append each field as a 2-space-indented YAML list item.
-  for await (const { value } of createParser(inputFile, "fields")) {
-    const field: Field = value;
-    const [dbName, tableSchema, tableName] = field.table_id;
-    const path = getTablePath(outputFolder, dbName, tableSchema, tableName);
-    const item = yaml.dump([formatField(field)], YAML_OPTS);
-    await appendFile(path, indentLines(item, "  "));
-    fields++;
-  }
-
-  return { databases, tables, fields };
+  const stats: ExtractMetadataResult = { databases: 0, tables: 0, fields: 0 };
+  const order = await firstPass(inputFile, outputFolder, stats);
+  await secondPass(inputFile, outputFolder, order, stats);
+  return stats;
 }
