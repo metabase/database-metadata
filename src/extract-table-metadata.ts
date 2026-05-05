@@ -122,7 +122,7 @@ function isTable(value: unknown): value is Table {
   return typeof value === "object" && value !== null && "db_id" in value;
 }
 
-// --- Subpass 1: write a database yaml file.
+// Subpass 1: write a database yaml file.
 function writeDatabase(
   outputFolder: string,
   db: Database,
@@ -136,7 +136,7 @@ function writeDatabase(
   stats.databases++;
 }
 
-// --- Subpass 2: touch each parent table file so the table phase can detect "has fields"
+// Subpass 2: touch each parent table file so the table phase can detect "has fields"
 // via existsSync. Skips the syscall for runs of consecutive fields sharing a path.
 function touchTableFile(
   outputFolder: string,
@@ -155,7 +155,7 @@ function touchTableFile(
   state.lastTouched = path;
 }
 
-// --- Subpass 3: write the table yaml; if the file already exists (touched by subpass 2),
+// Subpass 3: write the table yaml; if the file already exists (touched by subpass 2),
 // append a bare `fields:` trailer so subpass 4 can stream items underneath.
 function writeTable(
   outputFolder: string,
@@ -187,7 +187,7 @@ function flushFieldBuffer(state: FieldState): void {
   }
 }
 
-// --- Subpass 4: append a field as a 2-space-indented YAML list item, buffering
+// Subpass 4: append a field as a 2-space-indented YAML list item, buffering
 // consecutive fields sharing a path so they coalesce into one appendFileSync per table.
 // Wide tables flush mid-stream once the buffer exceeds FIELD_BUFFER_LIMIT bytes.
 // The caller flushes the trailing buffer once the stream ends.
@@ -216,7 +216,7 @@ function streamAll(inputFile: string, paths: string[]): JSONParser {
   return parser;
 }
 
-// --- Pass 1: stream the entire JSON. Always run subpass 1 (dbs) + subpass 2 (touch).
+// Pass 1: stream the entire JSON. Always run subpass 1 (dbs) + subpass 2 (touch).
 // Detect order from the first non-database hit; if fields appear before tables, also run
 // subpass 3 (writeTable) here so pass 2 only has to write fields.
 async function firstPass(
@@ -253,7 +253,7 @@ async function firstPass(
   return order ?? "tables-first";
 }
 
-// --- Pass 2: in tables-first mode, run subpass 3 (writeTable) + subpass 4 (writeField).
+// Pass 2: in tables-first mode, run subpass 3 (writeTable) + subpass 4 (writeField).
 // In fields-first mode, only subpass 4 — tables were already written in pass 1.
 async function secondPass(
   inputFile: string,
