@@ -1,7 +1,7 @@
+db_id: Sample Database
 name: PEOPLE
 schema: PUBLIC
 description: Information on the user accounts registered with Sample Company.
-db_id: Sample Database
 fields:
   - name: STATE
     description: The state or province of the account’s billing address

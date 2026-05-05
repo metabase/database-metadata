@@ -1,7 +1,7 @@
+db_id: Sample Database
 name: ORDERS
 schema: PUBLIC
 description: Confirmed Sample Company orders for a product, from a user.
-db_id: Sample Database
 fields:
   - name: QUANTITY
     description: Number of products bought.
