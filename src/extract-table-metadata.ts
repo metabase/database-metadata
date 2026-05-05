@@ -56,7 +56,7 @@ export type ExtractMetadataResult = {
 type Order = "tables-first" | "fields-first";
 
 type TouchState = {
-   lastTouched: string | null 
+  lastTouched: string | null;
 };
 
 type FieldState = {
