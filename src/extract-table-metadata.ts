@@ -60,11 +60,14 @@ type TouchState = {
 };
 
 type FieldState = {
-  buffer: string
+  buffer: string;
   bufferedPath: string | null;
 };
 
 const YAML_OPTS = { lineWidth: -1, noRefs: true } as const;
+
+// Per-table field buffer size before flushing
+const FIELD_BUFFER_LIMIT = 1024 * 1024;
 
 function escapeFilename(name: string): string {
   return name.replace(/\//g, "__SLASH__").replace(/\\/g, "__BACKSLASH__");
@@ -177,8 +180,16 @@ function writeTable(
   stats.tables++;
 }
 
+function flushFieldBuffer(state: FieldState): void {
+  if (state.bufferedPath !== null) {
+    appendFileSync(state.bufferedPath, state.buffer);
+    state.buffer = "";
+  }
+}
+
 // --- Subpass 4: append a field as a 2-space-indented YAML list item, buffering
 // consecutive fields sharing a path so they coalesce into one appendFileSync per table.
+// Wide tables flush mid-stream once the buffer exceeds FIELD_BUFFER_LIMIT bytes.
 // The caller flushes the trailing buffer once the stream ends.
 function writeField(
   outputFolder: string,
@@ -189,13 +200,13 @@ function writeField(
   const [dbName, tableSchema, tableName] = field.table_id;
   const path = getTablePath(outputFolder, dbName, tableSchema, tableName);
   if (path !== state.bufferedPath) {
-    if (state.bufferedPath !== null) {
-      appendFileSync(state.bufferedPath, state.buffer);
-    }
+    flushFieldBuffer(state);
     state.bufferedPath = path;
-    state.buffer = "";
   }
   state.buffer += indentLines(yaml.dump([formatField(field)], YAML_OPTS), "  ");
+  if (state.buffer.length >= FIELD_BUFFER_LIMIT) {
+    flushFieldBuffer(state);
+  }
   stats.fields++;
 }
 
@@ -261,9 +272,7 @@ async function secondPass(
       writeField(outputFolder, value, state, stats);
     }
   }
-  if (state.bufferedPath !== null) {
-    appendFileSync(state.bufferedPath, state.buffer);
-  }
+  flushFieldBuffer(state);
 }
 
 export async function extractTableMetadata({
