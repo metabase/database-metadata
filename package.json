@@ -39,6 +39,7 @@
     "test": "bun test"
   },
   "dependencies": {
+    "@streamparser/json-node": "^0.0.22",
     "js-yaml": "^4.1.0"
   },
   "devDependencies": {

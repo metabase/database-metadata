@@ -1,45 +1,40 @@
-import { readFileSync } from "node:fs";
+import { createReadStream } from "node:fs";
+import { access, appendFile, mkdir, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import yaml from "js-yaml";
+import { JSONParser } from "@streamparser/json-node";
 
-import {
-  buildIndex,
-  createFolder,
-  getDatabaseFolder,
-  getDatabaseKey,
-  getDatabasePath,
-  getFieldKey,
-  getTablePath,
-  getTablesFolder,
-  writeYaml,
-  type DatabaseKey,
-  type FieldKey,
-  type MetadataIndex,
-  type RawDatabase,
-  type RawField,
-  type RawMetadata,
-  type RawTable,
-} from "./lib.js";
+type DatabaseId = string;
+type TableId = [DatabaseId, string | null, string];
+type FieldId = [...TableId, string, ...string[]];
 
 type Database = {
+  id: DatabaseId;
   name: string;
   engine: string;
 };
 
+type Table = {
+  id: TableId;
+  db_id: DatabaseId;
+  name: string;
+  schema: string | null;
+  description?: string;
+};
+
 type Field = {
+  id: FieldId;
+  table_id: TableId;
   name: string;
   description?: string;
   base_type?: string;
   database_type?: string;
+  effective_type?: string;
   semantic_type?: string;
-  parent_id?: FieldKey;
-  fk_target_field_id?: FieldKey;
-};
-
-type Table = {
-  name: string;
-  schema: string | null;
-  description?: string;
-  db_id: DatabaseKey;
-  fields: Field[];
+  coercion_strategy?: string;
+  parent_id?: FieldId;
+  fk_target_field_id?: FieldId;
+  nfc_path?: string[];
 };
 
 export type ExtractMetadataOptions = {
@@ -53,86 +48,131 @@ export type ExtractMetadataResult = {
   fields: number;
 };
 
-function formatDatabase(db: RawDatabase): Database {
-  const { id: _id, ...result } = db;
-  return result;
-}
+const YAML_OPTS = { lineWidth: -1, noRefs: true } as const;
 
-function formatTable(db: RawDatabase, table: RawTable): Omit<Table, "fields"> {
-  const { id: _id, db_id: _db_id, ...rest } = table;
-  return { ...rest, db_id: getDatabaseKey(db) };
-}
-
-function formatField(
-  db: RawDatabase,
-  table: RawTable,
-  field: RawField,
-  index: MetadataIndex,
-): Field {
-  const { fieldsById, tablesById, databasesById } = index;
-  const {
-    id: _id,
-    table_id: _table_id,
-    parent_id,
-    fk_target_field_id,
-    ...rest
-  } = field;
-  const result: Field = { ...rest };
-  // Silently drop parent_id / fk_target_field_id if the referenced entity can't be resolved.
-  if (parent_id) {
-    const parent = fieldsById.get(parent_id);
-    const parentKey = parent && getFieldKey(db, table, parent, fieldsById);
-    if (parentKey) {
-      result.parent_id = parentKey;
-    }
+async function fileExists(path: string): Promise<boolean> {
+  try {
+    await access(path);
+    return true;
+  } catch {
+    return false;
   }
-  if (fk_target_field_id) {
-    const targetField = fieldsById.get(fk_target_field_id);
-    const targetTable = targetField && tablesById.get(targetField.table_id);
-    const targetDb = targetTable && databasesById.get(targetTable.db_id);
-    const targetKey =
-      targetDb &&
-      targetTable &&
-      targetField &&
-      getFieldKey(targetDb, targetTable, targetField, fieldsById);
-    if (targetKey) {
-      result.fk_target_field_id = targetKey;
-    }
-  }
-  return result;
 }
 
-function buildStats(metadata: RawMetadata): ExtractMetadataResult {
-  return {
-    databases: metadata.databases.length,
-    tables: metadata.tables.length,
-    fields: metadata.fields.length,
-  };
+function escapeFilename(name: string): string {
+  return name.replace(/\//g, "__SLASH__").replace(/\\/g, "__BACKSLASH__");
 }
 
-export function extractTableMetadata({
+function getDatabasePath(outputFolder: string, dbName: string): string {
+  const safe = escapeFilename(dbName);
+  return join(outputFolder, safe, `${safe}.yaml`);
+}
+
+function getTablePath(
+  outputFolder: string,
+  dbName: DatabaseId,
+  tableSchema: string | null,
+  tableName: string,
+): string {
+  const dbFolder = join(outputFolder, escapeFilename(dbName));
+  const tablesFolder = tableSchema
+    ? join(dbFolder, "schemas", escapeFilename(tableSchema), "tables")
+    : join(dbFolder, "tables");
+  return join(tablesFolder, `${escapeFilename(tableName)}.yaml`);
+}
+
+function indentLines(text: string, prefix: string): string {
+  return text.replace(/^(?=.)/gm, prefix);
+}
+
+function formatDatabase(db: Database) {
+  const { id: _id, ...rest } = db;
+  return rest;
+}
+
+function formatTable(table: Table) {
+  const { id: _id, ...rest } = table;
+  return rest;
+}
+
+function formatField(field: Field) {
+  const { id: _id, table_id: _table_id, ...rest } = field;
+  return rest;
+}
+
+function createParser(inputFile: string, key: string): JSONParser {
+  const parser = new JSONParser({
+    paths: [`$.${key}.*`],
+    keepStack: false,
+  });
+  createReadStream(inputFile).pipe(parser);
+  return parser;
+}
+
+export async function extractTableMetadata({
   inputFile,
   outputFolder,
-}: ExtractMetadataOptions): ExtractMetadataResult {
-  const metadata = JSON.parse(readFileSync(inputFile, "utf-8")) as RawMetadata;
-  const index = buildIndex(metadata);
-  const { databases, tablesByDbId, fieldsByTableId } = index;
+}: ExtractMetadataOptions): Promise<ExtractMetadataResult> {
+  let databases = 0;
+  let tables = 0;
+  let fields = 0;
 
-  for (const db of databases) {
-    createFolder(getDatabaseFolder(outputFolder, db));
-    writeYaml(getDatabasePath(outputFolder, db), formatDatabase(db));
+  // Pass 1 — databases: write each database yaml.
+  for await (const { value } of createParser(inputFile, "databases")) {
+    const db: Database = value;
+    await mkdir(join(outputFolder, escapeFilename(db.name)), {
+      recursive: true,
+    });
+    await writeFile(
+      getDatabasePath(outputFolder, db.name),
+      yaml.dump(formatDatabase(db), YAML_OPTS),
+    );
+    databases++;
+  }
 
-    for (const table of tablesByDbId.get(db.id) ?? []) {
-      const fields = (fieldsByTableId.get(table.id) ?? []).map((field) =>
-        formatField(db, table, field, index),
-      );
-      createFolder(getTablesFolder(outputFolder, db, table));
-      writeYaml(getTablePath(outputFolder, db, table), {
-        ...formatTable(db, table),
-        fields,
-      });
+  // Pass 2 — fields (touch): create an empty file at each parent table's path so pass 3
+  // can detect "this table has fields" via fileExists.
+  for await (const { value } of createParser(inputFile, "fields")) {
+    const field: Field = value;
+    const [dbName, tableSchema, tableName] = field.table_id;
+    const path = getTablePath(outputFolder, dbName, tableSchema, tableName);
+    if (!(await fileExists(path))) {
+      await mkdir(dirname(path), { recursive: true });
+      await writeFile(path, "");
     }
   }
 
-  return buildStats(metadata);
+  // Pass 3 — tables: write each table's metadata; when pass 2 already created the file,
+  // append a bare `fields:` so pass 4 can stream items underneath.
+  for await (const { value } of createParser(inputFile, "tables")) {
+    const table: Table = value;
+    const path = getTablePath(
+      outputFolder,
+      table.db_id,
+      table.schema,
+      table.name,
+    );
+    const hasFields = await fileExists(path);
+    if (!hasFields) {
+      await mkdir(dirname(path), { recursive: true });
+    }
+    let content = yaml.dump(formatTable(table), YAML_OPTS);
+    if (hasFields) {
+      content += "fields:\n";
+    }
+    await writeFile(path, content);
+    tables++;
+  }
+
+  // Pass 4 — fields (write): append each field as a 2-space-indented YAML list item.
+  for await (const { value } of createParser(inputFile, "fields")) {
+    const field: Field = value;
+    const [dbName, tableSchema, tableName] = field.table_id;
+    const path = getTablePath(outputFolder, dbName, tableSchema, tableName);
+    const item = yaml.dump([formatField(field)], YAML_OPTS);
+    await appendFile(path, indentLines(item, "  "));
+    fields++;
+  }
+
+  return { databases, tables, fields };
 }
