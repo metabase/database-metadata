@@ -33,7 +33,7 @@ function parseArguments() {
   });
 }
 
-async function handleExtractMetadata(positionals: string[]): Promise<void> {
+function handleExtractMetadata(positionals: string[]): void {
   const inputFile = positionals[1];
   const outputFolder = positionals[2];
 
@@ -44,7 +44,7 @@ async function handleExtractMetadata(positionals: string[]): Promise<void> {
     process.exit(1);
   }
 
-  const stats = await extractTableMetadata({ inputFile, outputFolder });
+  const stats = extractTableMetadata({ inputFile, outputFolder });
   console.log(
     `Extracted ${stats.databases} databases, ${stats.tables} tables, ${stats.fields} fields`,
   );
@@ -57,7 +57,7 @@ function handleExtractSpec(values: ParsedValues): void {
   process.exit(0);
 }
 
-async function main(): Promise<void> {
+function main(): void {
   const { values, positionals } = parseArguments();
   const command = positionals[0];
 
@@ -77,4 +77,4 @@ async function main(): Promise<void> {
   }
 }
 
-await main();
+main();
