@@ -2,6 +2,7 @@
 
 import { parseArgs } from "node:util";
 
+import { extractFieldValues } from "../src/extract-field-values.js";
 import { extractTableMetadata } from "../src/extract-table-metadata.js";
 import { extractSpec } from "../src/extract-spec.js";
 
@@ -16,6 +17,11 @@ Commands:
   extract-table-metadata <input-file> <output-folder>   Extract metadata JSON into YAML files
                                                   Writes one YAML per database + one per table
                                                   with fields nested inside.
+
+  extract-field-values <metadata-file> <field-values-file> <output-folder>
+                                                  Extract field values JSON into YAML files
+                                                  placed next to each table YAML, one per
+                                                  field that has sampled values.
 
   extract-spec                                    Copy the bundled spec.md into a target file
     --file <path>      Destination file (default: ./spec.md)
@@ -33,7 +39,7 @@ function parseArguments() {
   });
 }
 
-async function handleExtractMetadata(positionals: string[]): Promise<void> {
+function handleExtractMetadata(positionals: string[]): void {
   const inputFile = positionals[1];
   const outputFolder = positionals[2];
 
@@ -44,9 +50,32 @@ async function handleExtractMetadata(positionals: string[]): Promise<void> {
     process.exit(1);
   }
 
-  const stats = await extractTableMetadata({ inputFile, outputFolder });
+  const stats = extractTableMetadata({ inputFile, outputFolder });
   console.log(
     `Extracted ${stats.databases} databases, ${stats.tables} tables, ${stats.fields} fields`,
+  );
+  process.exit(0);
+}
+
+function handleExtractFieldValues(positionals: string[]): void {
+  const metadataFile = positionals[1];
+  const fieldValuesFile = positionals[2];
+  const outputFolder = positionals[3];
+
+  if (!metadataFile || !fieldValuesFile || !outputFolder) {
+    console.error(
+      "Error: <metadata-file>, <field-values-file>, and <output-folder> arguments are required",
+    );
+    process.exit(1);
+  }
+
+  const stats = extractFieldValues({
+    metadataFile,
+    fieldValuesFile,
+    outputFolder,
+  });
+  console.log(
+    `Extracted values for ${stats.fieldsWithValues} fields (${stats.fieldsSkipped} skipped, ${stats.orphans} orphans)`,
   );
   process.exit(0);
 }
@@ -57,7 +86,7 @@ function handleExtractSpec(values: ParsedValues): void {
   process.exit(0);
 }
 
-async function main(): Promise<void> {
+function main(): void {
   const { values, positionals } = parseArguments();
   const command = positionals[0];
 
@@ -69,6 +98,8 @@ async function main(): Promise<void> {
   switch (command) {
     case "extract-table-metadata":
       return handleExtractMetadata(positionals);
+    case "extract-field-values":
+      return handleExtractFieldValues(positionals);
     case "extract-spec":
       return handleExtractSpec(values);
     default:
@@ -77,4 +108,4 @@ async function main(): Promise<void> {
   }
 }
 
-await main();
+main();
