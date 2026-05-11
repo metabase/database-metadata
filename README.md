@@ -20,7 +20,7 @@ Reference output for the Sample Database lives in **[examples/v1/](examples/v1/)
 
 ## Obtaining metadata
 
-Metadata is fetched from Metabase's `GET /api/ee/serialization/metadata/export` endpoint as a `table_metadata.json` file — a flat JSON document with three arrays (`databases`, `tables`, and `fields`) streamed so even warehouses with very large schemas can be exported without exhausting server memory.
+Metadata is fetched from Metabase's `POST /api/ee/serialization/metadata/export` endpoint as a `table_metadata.json` file — a flat JSON document with three arrays (`databases`, `tables`, and `fields`) streamed so even warehouses with very large schemas can be exported without exhausting server memory.
 
 The endpoint accepts three boolean query parameters that opt sections in or out — they all default to `false`, so requests must explicitly set the sections they want:
 
@@ -31,7 +31,7 @@ The endpoint accepts three boolean query parameters that opt sections in or out 
 A typical full export sets all three to `true`:
 
 ```
-GET /api/ee/serialization/metadata/export?with-databases=true&with-tables=true&with-fields=true
+POST /api/ee/serialization/metadata/export?with-databases=true&with-tables=true&with-fields=true
 ```
 
 ### Extracting metadata to YAML
